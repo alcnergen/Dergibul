@@ -1,13 +1,13 @@
 name: Veri güncelle
 
+# Her gece TR Dizin'deki tüm aktif dergiler yeniden ölçülür.
+# Liste 8 parçaya bölünür ve parçalar ayrı makinelerde paralel çalışır; böylece hem 6 saatlik
+# iş sınırına sığar hem de tek bir IP'den DergiPark'a yoğun istek gitmez. Daha önce ölçülen
+# makaleler önbellekten okunduğu için ilk geceden sonra her parça yaklaşık yarım saat sürer.
 on:
   schedule:
-    - cron: "17 1 * * *"   # her gün 01:17 UTC; dergi başına ~45 sn, 150 dergi ~2 saat
+    - cron: "17 0 * * *"   # her gece 00:17 UTC (03:17 TSİ)
   workflow_dispatch:
-    inputs:
-      max_dergi:
-        description: "Bu çalıştırmada ölçülecek en fazla TR Dizin dergisi"
-        default: "150"
 
 permissions:
   contents: write
@@ -16,24 +16,56 @@ concurrency:
   group: veri-guncelle
   cancel-in-progress: false
 
+env:
+  PYTHONUNBUFFERED: "1"   # ilerleme log'da canlı görünsün
+
 jobs:
-  guncelle:
+  olc:
+    name: Ölç (parça ${{ matrix.parca }}/8)
     runs-on: ubuntu-latest
-    timeout-minutes: 300
-    env:
-      PYTHONUNBUFFERED: "1"   # ilerleme log'da canlı görünsün
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        parca: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
-      # Kuyrukta bekleyen çalıştırma, önceki çalıştırmanın kaydettiği en son veriyi alsın
       - uses: actions/checkout@v4
         with:
           ref: main
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: TR Dizin listesini çek ve bu parçadaki dergileri ölç
+        run: |
+          mkdir -p parca
+          python3 scripts/trdizin_guncelle.py --parca ${{ matrix.parca }}/8 --bekleme 1.0 \
+            --cikti parca/parca-${{ matrix.parca }}.json \
+            --onbellek-cikti parca/onbellek-${{ matrix.parca }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: parca-${{ matrix.parca }}
+          path: parca/
+          retention-days: 3
+
+  birlestir:
+    needs: olc
+    if: ${{ !cancelled() }}   # bir parça başarısız olsa da diğerlerini kaydet
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: parca-*
+          path: parcalar
 
       - name: Yurtdışı listesi (SJR + Web of Science dosyaları)
         run: |
-          set -e
           ARGS=""
           if curl -fsSL -A "Mozilla/5.0" -o /tmp/scimagojr.csv "https://www.scimagojr.com/journalrank.php?out=xls" \
              && head -1 /tmp/scimagojr.csv | grep -q "SJR Best Quartile"; then
@@ -46,18 +78,14 @@ jobs:
           done
           if [ -n "$ARGS" ]; then python3 scripts/uluslararasi_guncelle.py $ARGS; else echo "Kaynak yok, atlandı."; fi
 
-      - name: TR Dizin kayıt yapısını göster (eşleme kontrolü için)
-        continue-on-error: true
-        run: python3 scripts/trdizin_api.py --incele
-
-      - name: TR Dizin listesini çek ve DergiPark'tan ölç
-        run: python3 scripts/trdizin_guncelle.py --max-dergi "${{ github.event.inputs.max_dergi || '150' }}"
+      - name: Parçaları birleştir
+        run: python3 scripts/parca_birlestir.py parcalar
 
       - name: Değişiklikleri kaydet
         run: |
           git config user.name "dergibul-bot"
           git config user.email "dergibul-bot@users.noreply.github.com"
-          git add data/*.json
+          git add data/*.json data/kaynak/makale_onbellek.json
           git diff --cached --quiet || git commit -m "Veri güncellemesi $(date -u +%F)"
           git pull --rebase origin main
           git push origin HEAD:main

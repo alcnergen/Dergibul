@@ -107,6 +107,7 @@
     metrik("Toplam", gun(Motor.ortalamaToplamGun(d)));
     metrik("İlk boş sayı", d.ilkBosSayi ? d.ilkBosSayi + (d.ilkBosSayiKaynak ? " (" + d.ilkBosSayiKaynak + ")" : "") : "—");
     metrik("Ücret", d.apc ? d.apc + " " + (d.apcBirim || "TL") : "Yok");
+    if (d.sonYayin) metrik("Son yayın", d.sonYayin);
     if (d.ceyrek) metrik("Çeyrek", d.ceyrek);
     if (d.kabulOrani != null) metrik("Kabul oranı", "%" + d.kabulOrani + (d.kabulOraniYil ? " (" + d.kabulOraniYil + ")" : ""));
     kart.append(m);
@@ -116,6 +117,11 @@
     (d.kabulEdilenTurler || []).forEach((x) => r.append(el("span", "rozet iyi", Motor.CALISMA_TIPLERI[x] || x)));
     deg.engeller.forEach((x) => r.append(el("span", "rozet kotu", x)));
     deg.uyarilar.forEach((x) => r.append(el("span", "rozet dikkat", x)));
+    // TR Dizin'de olup DergiPark'ta bulunmayan dergiler: süreler varsa Crossref'ten gelir
+    if ((d.endeksler || []).includes("TR Dizin") && d.olcumTarihi && !d.dergipark) {
+      r.append(el("span", "rozet dikkat", "DergiPark'ta yok"));
+      r.append(el("span", "rozet", d.veriKaynagi === "Crossref" ? "Süreler: Crossref" : "Süre verisi bulunamadı"));
+    }
     kart.append(r);
     return kart;
   }

@@ -24,9 +24,20 @@ jobs:
       - name: DergiPark sayfa yapısı
         run: python3 scripts/dergipark_incele.py tybakademi
 
+      - name: Crossref (DergiPark'ta olmayan dergiler)
+        run: |
+          cd scripts && python3 - <<'PY'
+          from ortak import Getirici
+          from crossref import crossref_olc
+          g = Getirici(bekleme=0.3)
+          for ad, issn in [("Beykoz Akademi", "2651-5393"), ("Journal of Mosaic Research", "1309-047X"),
+                           ("Mehmet Akif SBE", "1309-1387")]:
+              print(ad, crossref_olc(g, [issn]))
+          PY
+
       - name: 3 dergiyle uçtan uca ölçüm
         run: |
-          python3 scripts/trdizin_guncelle.py --max-dergi 3 --cikti /tmp/kontrol.json
+          python3 scripts/trdizin_guncelle.py --max-dergi 3 --cikti /tmp/kontrol.json --onbellek /tmp/onbellek.json
           python3 - <<'PY'
           import json
           v = json.load(open("/tmp/kontrol.json"))
