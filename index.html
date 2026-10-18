@@ -94,12 +94,20 @@
         <h2>Veri durumu</h2>
         <dl id="veri-durum" class="durum"></dl>
         <h3>Kendi verinizi yükleyin</h3>
-        <p>Güncelleme betiklerinin ürettiği <code>trdizin.json</code> / <code>uluslararasi.json</code> dosyalarını ya da aynı sütunlara sahip bir CSV dosyasını seçin. Dosya yalnızca tarayıcınızda okunur.</p>
+        <p>Güncelleme betiklerinin ürettiği <code>trdizin.json</code> / <code>uluslararasi.json</code> dosyasını ya da aynı sütunlara sahip bir CSV dosyasını seçip <b>Sisteme aktar</b>'a basın. Dosya yalnızca bu tarayıcıda kullanılır ve hatırlanır; sunucuya gönderilmez. Sitenin kendi verisi her gece otomatik güncellendiği için çoğu zaman yükleme gerekmez.</p>
         <div class="filtre">
-          <label>TR Dizin <input type="file" id="yukle-tr" accept=".json,.csv"></label>
-          <label>Uluslararası <input type="file" id="yukle-ul" accept=".json,.csv"></label>
-          <button type="button" id="sifirla">Varsayılan veriye dön</button>
+          <label>Dosya <input type="file" id="yukle-dosya" accept=".json,.csv"></label>
+          <label>Hangi liste?
+            <select id="yukle-hedef">
+              <option value="">Otomatik algıla</option>
+              <option value="tr">TR Dizin</option>
+              <option value="ul">Uluslararası (ESCI, Q1/Q2, SSCI)</option>
+            </select>
+          </label>
+          <button type="button" id="yukle-aktar" class="birincil" disabled>Sisteme aktar</button>
+          <button type="button" id="sifirla">Sitenin verisine dön</button>
         </div>
+        <p id="yukle-durum" class="ozet" role="status"></p>
         <h3>Süreler nasıl hesaplanıyor?</h3>
         <p>Tahmini yayın tarihi = bugün + ortalama (gönderim → kabul) + ortalama (kabul → yayın). Dergi ilk boş sayısını ilan ettiyse ikisinden geç olanı alınır. Ortalamalar, derginin son sayılarında yayımlanan makalelerin DergiPark'taki gönderim, kabul ve yayın tarihlerinden ölçülür. Ölçüm 10 makalenin altındaysa güvenilirlik düşük kabul edilir.</p>
       </div>

@@ -55,6 +55,10 @@ select, input[type=number], input[type=month], button {
   background: var(--yuzey); color: var(--metin);
 }
 button { cursor: pointer; }
+button.birincil { background: var(--vurgu); border-color: var(--vurgu); color: var(--yuzey); font-weight: 600; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+#yukle-durum.basarili { color: var(--iyi); }
+#yukle-durum.hata { color: var(--kotu); }
 
 .sekmeler { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--cizgi); margin-bottom: 12px; }
 .sekmeler button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; padding: 10px 12px; white-space: nowrap; color: var(--soluk); }
