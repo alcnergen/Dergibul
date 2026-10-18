@@ -35,7 +35,8 @@ Bu komut elle giriş gerektirmeden şu adımları izler:
    - yayın ayları ("Yayın Modeli: Süreli Yayın (Ocak - Mayıs - Eylül)" → yılda 3 sayı)
    - "Makale Gönderimine Açık/Kapalı" durumu ve "makale kabulü 31 Ocak 2027'ye kadar kapalı" gibi açılış tarihleri. Açılış tarihi biliniyorsa tahmin o tarihten başlatılır, bilinmiyorsa dergi "şu an kapalı" olarak işaretlenir.
    - "… yılına kadar dolu" / "… yılı sayıları dolmuştur" duyuruları (`ilkBosSayi`, kaynak: *dergi duyurusu*)
-4. **Süreler:** Son 4 sayıdan, her sayıda 6 makale inceler. Makale sayfalarındaki **Gönderilme / Kabul / Yayımlanma** tarihlerinden ortalama süreleri hesaplar. Sıklık başka yerden bulunamazsa sayıların yayın aralıklarından tahmin eder. Kabul edilen çalışma türlerini de bu makalelerin türlerinden çıkarır.
+4. **Resmî istatistikler:** DergiPark "Kabul-Ret İstatistikleri" sayfasından en güncel yılın kabul oranı ile gönderimden kabul/ret kararına ortalama süreler okunur (`kabulOrani`, `ortIlkKararGun`, `resmiKabulGun`). Kabul oranı %20'nin altındaysa sitede uyarı gösterilir.
+5. **Süreler:** Son 4 sayıdan, her sayıda 6 makale inceler. Makale sayfalarındaki **Gönderilme / Kabul / Yayımlanma** tarihlerinden ortalama süreleri hesaplar. Sıklık başka yerden bulunamazsa sayıların yayın aralıklarından tahmin eder. Kabul edilen çalışma türlerini de bu makalelerin türlerinden çıkarır.
 
 Her çalıştırmada en uzun süredir ölçülmemiş dergiler önce ele alınır, diğerlerinin önceki ölçümleri korunur. Böylece yaklaşık 2.000 dergilik liste birkaç haftalık otomatik çalıştırmayla dolar ve sitelere fazla yük binmez.
 

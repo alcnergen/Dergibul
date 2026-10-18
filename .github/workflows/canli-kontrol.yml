@@ -22,7 +22,7 @@ jobs:
       - name: TR Dizin ilk kayıt
         run: python3 scripts/trdizin_api.py --incele
       - name: DergiPark sayfa yapısı
-        run: python3 scripts/dergipark_incele.py tybakademi --issn 2146-1759
+        run: python3 scripts/dergipark_incele.py tybakademi
 
       - name: 3 dergiyle uçtan uca ölçüm
         run: |

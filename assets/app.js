@@ -108,6 +108,7 @@
     metrik("İlk boş sayı", d.ilkBosSayi ? d.ilkBosSayi + (d.ilkBosSayiKaynak ? " (" + d.ilkBosSayiKaynak + ")" : "") : "—");
     metrik("Ücret", d.apc ? d.apc + " " + (d.apcBirim || "TL") : "Yok");
     if (d.ceyrek) metrik("Çeyrek", d.ceyrek);
+    if (d.kabulOrani != null) metrik("Kabul oranı", "%" + d.kabulOrani + (d.kabulOraniYil ? " (" + d.kabulOraniYil + ")" : ""));
     kart.append(m);
 
     const r = el("div", "rozetler");

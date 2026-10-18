@@ -212,6 +212,35 @@ def anasayfa_coz(html):
     return sonuc
 
 
+def istatistik_coz(html):
+    """DergiPark 'Kabul-Ret İstatistikleri' sayfasından kabul oranı ve ortalama karar sürelerini okur."""
+    metin = html_metin(html)
+    sonuc = {}
+    # "2025 36 49 %42 %58" -> yıl, kabul, ret, kabul %, ret %
+    satirlar = [tuple(map(int, m)) for m in re.findall(r"\b(20\d{2}) (\d+) (\d+) %(\d+) %(\d+)", metin)]
+    satirlar = [s for s in satirlar if s[1] + s[2] >= 5]
+    if satirlar:
+        yil, kabul, ret, oran, _ = max(satirlar)
+        sonuc |= {"kabulOrani": oran, "kabulOraniYil": yil, "degerlendirilenMakale": kabul + ret}
+
+    def blok(baslik):
+        """'<başlık> Hakem değerlendirmesi var : N G Hakem değerlendirmesi yok : N G' -> [(N, G), (N, G)]"""
+        m = re.search(re.escape(baslik) + r"\s*İstatistiği\s*(.{0,140})", metin)
+        return [(int(n), int(g)) for n, g in re.findall(r":\s*(\d+)\s+(\d+)", m.group(1))[:2]] if m else []
+
+    def ortalama_gun(ciftler):
+        toplam = sum(n for n, _ in ciftler)
+        return round(sum(n * g for n, g in ciftler) / toplam) if toplam else None
+
+    kabul = blok("Makale Gönderimi - Kabul Kararı")
+    ret = blok("Makale Gönderimi - Ret Kararı")
+    if ortalama_gun(kabul):
+        sonuc["resmiKabulGun"] = ortalama_gun(kabul)
+    if ortalama_gun(kabul + ret):
+        sonuc["ortIlkKararGun"] = ortalama_gun(kabul + ret)
+    return sonuc
+
+
 def satirdan_dergi(satir):
     issn = issn_normal(satir.get("issn")) or issn_normal(satir.get("eissn"))
     kok = dergipark_kok(satir.get("dergipark"))
@@ -252,6 +281,13 @@ def olcumu_uygula(dergi, olcum):
     if not dergi["ilkBosSayi"] and olcum.get("ilkBosSayi"):
         dergi["ilkBosSayi"] = olcum["ilkBosSayi"]
         dergi["ilkBosSayiKaynak"] = olcum.get("ilkBosSayiKaynak")
+    for k in ("kabulOrani", "kabulOraniYil", "degerlendirilenMakale", "resmiKabulGun"):
+        if olcum.get(k) is not None:
+            dergi[k] = olcum[k]
+    if not dergi.get("ortIlkKararGun") and olcum.get("ortIlkKararGun"):
+        dergi["ortIlkKararGun"] = olcum["ortIlkKararGun"]
+    if not dergi.get("ortKabulGun") and olcum.get("resmiKabulGun"):
+        dergi["ortKabulGun"] = olcum["resmiKabulGun"]  # makale tarihi ölçülemediyse resmî süre
     if olcum.get("gonderimKapali"):
         dergi["gonderimKapali"] = True
         if olcum.get("gonderimAcilis"):
@@ -368,6 +404,9 @@ def main():
         html = getirici.getir(d["dergipark"])
         if html:
             olcum |= {k: v for k, v in anasayfa_coz(html).items() if k not in olcum}
+        html = getirici.getir(d["dergipark"] + "/rejection-statistics")
+        if html:
+            olcum |= istatistik_coz(html)
         olcum["olcumTarihi"] = bugun
         olcumu_uygula(d, olcum)
 

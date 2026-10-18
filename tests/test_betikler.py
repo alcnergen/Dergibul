@@ -136,6 +136,20 @@ class Duyuru(unittest.TestCase):
         self.assertEqual(tr.anasayfa_coz("Dergimiz yılda üç kez yayımlanır.")["yillikSayi"], 3)
         self.assertEqual(tr.anasayfa_coz("Kuruluş 1998. Hakemli dergi."), {})
 
+    def test_istatistik(self):
+        # DergiPark kabul-ret istatistikleri sayfasının metni (gerçek, kısaltılmış)
+        metin = ("Yıl Kabul Edilen Makale Sayısı Reddedilen Makale Sayısı Kabul Oranı Ret Oranı 2022 0 1 %0 %100 "
+                 "2023 0 0 %0 %0 2024 0 22 %0 %100 2025 36 49 %42 %58 Süre İstatistikleri Yıl : 2025 2024 "
+                 "Makale Gönderimi - İlk Editör Ataması: 40 4 İlk Editör Ataması- Kabul Kararı İstatistiği "
+                 "Hakem değerlendirmesi var : 26 64 Hakem değerlendirmesi yok : 0 0 "
+                 "Makale Gönderimi - Kabul Kararı İstatistiği Hakem değerlendirmesi var : 26 67 "
+                 "Hakem değerlendirmesi yok : 0 0 Makale Gönderimi - Ret Kararı İstatistiği "
+                 "Hakem değerlendirmesi var : 9 35 Hakem değerlendirmesi yok : 39 4 Keşfet")
+        self.assertEqual(tr.istatistik_coz(metin), {
+            "kabulOrani": 42, "kabulOraniYil": 2025, "degerlendirilenMakale": 85,
+            "resmiKabulGun": 67, "ortIlkKararGun": round((26 * 67 + 9 * 35 + 39 * 4) / 74)})
+        self.assertEqual(tr.istatistik_coz("istatistik yok"), {})
+
     def test_duzeltmeler(self):
         satirlar = [{"ad": "A", "issn": "1234-5678", "ilkBosSayi": ""}]
         tr.duzeltmeleri_uygula(satirlar, [{"issn": "12345678", "ilkBosSayi": "2028-01", "ad": ""},

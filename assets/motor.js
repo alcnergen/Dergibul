@@ -127,6 +127,7 @@
     if (dergi.yillikSayi && (dergi.yillikSayi < 3 || dergi.yillikSayi > 4)) {
       uyarilar.push("Yılda " + dergi.yillikSayi + " sayı");
     }
+    if (dergi.kabulOrani != null && dergi.kabulOrani < 20) uyarilar.push("Düşük kabul oranı (%" + dergi.kabulOrani + ")");
     if (dergi.dogrulandi === false) uyarilar.push("Veri doğrulanmadı");
 
     // Puan: hız (50), yayın sıklığı (20), ücret (15), veri güveni (15)
