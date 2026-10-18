@@ -176,17 +176,23 @@
     dl.replaceChildren();
     [["TR Dizin", durum.tr], ["Uluslararası", durum.ul]].forEach(([ad, v]) => {
       dl.append(el("dt", null, ad));
-      dl.append(el("dd", null, v.dergiler.length + " dergi · " + (v.meta.kaynak || "?") + " · güncelleme " + (v.meta.guncelleme || "?")));
+      dl.append(el("dd", null, v.dergiler.length + " dergi · " + (v.meta.kaynak || "?") + " · güncelleme " + (v.meta.guncelleme || "?") +
+        (v.meta.yuklenenDosya ? " · yüklenen dosya: " + v.meta.yuklenenDosya : "") + (v.meta.ornek ? " · örnek veri" : "")));
     });
   }
 
+  // Uyarı yalnızca açık sekmenin kullandığı liste örnek veriyse gösterilir
   function ornekUyarisi() {
-    const ornek = [durum.tr, durum.ul].some((v) => v.meta.ornek);
     const u = $("#ornek-uyari");
-    u.hidden = !ornek;
-    u.textContent = ornek
-      ? "Şu an örnek (kurgusal) veri gösteriliyor. Gerçek dergi listesi için README'deki güncelleme adımlarını izleyin ya da Veri sekmesinden kendi dosyanızı yükleyin."
-      : "";
+    let metin = "";
+    if (durum.sekme === "trdizin" && durum.tr.meta.ornek) {
+      metin = "TR Dizin listesi şu an örnek (kurgusal) veri. Veri sekmesinden gerçek trdizin.json dosyasını yükleyebilirsiniz.";
+    } else if ((durum.sekme === "esci" || durum.sekme === "yurtdisi") && durum.ul.meta.ornek) {
+      metin = "Yurtdışı ve ESCI listesi henüz örnek (kurgusal) veri; Web of Science ve SCImago dosyaları eklenince gerçek liste gelecek. " +
+        "TR Dizin sekmesindeki veriler gerçektir.";
+    }
+    u.hidden = !metin;
+    u.textContent = metin;
   }
 
   function secenekleriDoldur() {
@@ -206,27 +212,63 @@
     alan.value = secili;
   }
 
-  function dosyaYukle(input, anahtar) {
-    input.addEventListener("change", async () => {
-      const dosya = input.files[0];
-      if (!dosya) return;
-      try {
-        const metin = await dosya.text();
-        const veri = /\.csv$/i.test(dosya.name) ? csvOku(metin) : JSON.parse(metin);
-        if (!Array.isArray(veri.dergiler)) throw new Error("'dergiler' dizisi bulunamadı");
-        veri.meta = veri.meta || { kaynak: dosya.name };
-        durum[anahtar] = veri;
-        secenekleriDoldur(); ornekUyarisi(); ciz();
-      } catch (e) {
-        alert("Dosya okunamadı: " + e.message);
-      }
-    });
+  const DEPO_ANAHTARI = "dergibul-yuklenen-";
+
+  function depoyaYaz(anahtar, veri) {
+    try { localStorage.setItem(DEPO_ANAHTARI + anahtar, JSON.stringify(veri)); return true; } catch (e) { return false; }
+  }
+
+  function depodanOku(anahtar) {
+    try { return JSON.parse(localStorage.getItem(DEPO_ANAHTARI + anahtar) || "null"); } catch (e) { return null; }
+  }
+
+  function depoyuTemizle() {
+    try { ["tr", "ul"].forEach((k) => localStorage.removeItem(DEPO_ANAHTARI + k)); } catch (e) { /* depo kapalı */ }
+  }
+
+  // Dosyanın hangi listeye ait olduğunu tahmin eder: kayıtların çoğu TR Dizin'deyse "tr"
+  function hedefiAlgila(veri) {
+    if (/TR Dizin/i.test((veri.meta && veri.meta.kaynak) || "")) return "tr";
+    const tr = veri.dergiler.filter((d) => (d.endeksler || []).includes("TR Dizin")).length;
+    return tr > veri.dergiler.length / 2 ? "tr" : "ul";
+  }
+
+  function yuklemeDurumu(metin, tur) {
+    const p = $("#yukle-durum");
+    p.textContent = metin;
+    p.className = "ozet" + (tur ? " " + tur : "");
+  }
+
+  function veriyiUygula(anahtar, veri) {
+    durum[anahtar] = veri;
+    secenekleriDoldur(); ornekUyarisi(); ciz();
+  }
+
+  async function sistemeAktar() {
+    const dosya = $("#yukle-dosya").files[0];
+    if (!dosya) return;
+    try {
+      const metin = await dosya.text();
+      const veri = /\.csv$/i.test(dosya.name) ? csvOku(metin) : JSON.parse(metin);
+      if (!veri || !Array.isArray(veri.dergiler) || !veri.dergiler.length) throw new Error("dosyada dergi listesi bulunamadı");
+      veri.meta = Object.assign({ kaynak: dosya.name }, veri.meta, { yuklenenDosya: dosya.name });
+      const anahtar = $("#yukle-hedef").value || hedefiAlgila(veri);
+      veriyiUygula(anahtar, veri);
+      const kalici = depoyaYaz(anahtar, veri);
+      const ad = anahtar === "tr" ? "TR Dizin" : "Uluslararası";
+      yuklemeDurumu("✓ " + dosya.name + ": " + veri.dergiler.length + " dergi " + ad + " listesine aktarıldı" +
+        (kalici ? " (bu tarayıcıda hatırlanacak)." : ". Tarayıcı depolaması kapalı olduğu için sayfa yenilenince silinir."), "basarili");
+      sekmeSec(anahtar === "tr" ? "trdizin" : "yurtdisi");
+    } catch (e) {
+      yuklemeDurumu("Dosya aktarılamadı: " + e.message, "hata");
+    }
   }
 
   function sekmeSec(ad) {
     durum.sekme = ad;
     document.querySelectorAll(".sekmeler button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.sekme === ad)));
     document.querySelectorAll(".panel").forEach((p) => { p.hidden = p.id !== ad; });
+    ornekUyarisi();
     ciz();
   }
 
@@ -238,6 +280,17 @@
       $("#tr-liste").append(el("div", "bos", "Veri yüklenemedi: " + e.message + ". Siteyi bir web sunucusu üzerinden açın (README)."));
       return;
     }
+    // Daha önce bu tarayıcıda yüklenen dosyalar
+    ["tr", "ul"].forEach((k) => {
+      const v = depodanOku(k);
+      if (!v || !Array.isArray(v.dergiler)) return;
+      // Site gece güncellendiyse ve daha yeniyse eski yüklemeyi bırak
+      if ((v.meta.guncelleme || "") < (durum[k].meta.guncelleme || "") && !durum[k].meta.ornek) {
+        try { localStorage.removeItem(DEPO_ANAHTARI + k); } catch (e) { /* depo kapalı */ }
+        return;
+      }
+      durum[k] = v;
+    });
     secenekleriDoldur();
     ornekUyarisi();
     document.querySelectorAll(".sekmeler button").forEach((b) => b.addEventListener("click", () => sekmeSec(b.dataset.sekme)));
@@ -247,11 +300,16 @@
     $("#yd-sadece-ssci").addEventListener("change", (e) => {
       ["#yd-q1", "#yd-q2", "#yd-ssci"].forEach((s) => { $(s).disabled = e.target.checked; });
     });
-    dosyaYukle($("#yukle-tr"), "tr");
-    dosyaYukle($("#yukle-ul"), "ul");
+    $("#yukle-dosya").addEventListener("change", (e) => {
+      $("#yukle-aktar").disabled = !e.target.files.length;
+      yuklemeDurumu(e.target.files.length ? "Dosya seçildi; aktarmak için Sisteme aktar'a basın." : "");
+    });
+    $("#yukle-aktar").addEventListener("click", sistemeAktar);
     $("#sifirla").addEventListener("click", () => {
+      depoyuTemizle();
       durum.tr = durum.varsayilan.tr; durum.ul = durum.varsayilan.ul;
       secenekleriDoldur(); ornekUyarisi(); ciz();
+      yuklemeDurumu("Sitenin kendi verisine dönüldü.");
     });
     ciz();
   }
