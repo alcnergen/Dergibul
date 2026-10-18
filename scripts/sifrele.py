@@ -64,9 +64,11 @@ def main():
     if args.islem == "coz" and not args.dosyalar and not any(sifreli_yol(KOK / y).exists() for y in DOSYALAR):
         print("Şifreli veri yok; çözülecek bir şey yok.")
         return
+    if not parola:
+        sys.exit("DERGIBUL_PAROLA tanımlı değil. GitHub: Settings → Secrets and variables → Actions → "
+                 "New repository secret.")
     if len(parola) < 8:
-        sys.exit("DERGIBUL_PAROLA tanımlı değil ya da 8 karakterden kısa. GitHub: Settings → Secrets and "
-                 "variables → Actions → New repository secret.")
+        print("::warning::DERGIBUL_PAROLA 8 karakterden kısa; şifreli veri deneme yoluyla daha kolay açılabilir.")
     for yol in hedefler:
         duz = Path(yol) if args.dosyalar else KOK / yol
         if args.islem == "coz" and str(duz).endswith(".enc.json"):
