@@ -1,0 +1,94 @@
+:root {
+  --zemin: #f6f7f9;
+  --yuzey: #ffffff;
+  --metin: #1c2330;
+  --soluk: #5b6577;
+  --cizgi: #dfe3ea;
+  --vurgu: #1d5fd1;
+  --vurgu-acik: #e7effc;
+  --iyi: #1b7f4b;
+  --iyi-acik: #e3f4ea;
+  --kotu: #b3261e;
+  --kotu-acik: #fbe9e7;
+  --dikkat: #8a5a00;
+  --dikkat-acik: #fff4d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --zemin: #12161d;
+    --yuzey: #1b212b;
+    --metin: #e6e9ef;
+    --soluk: #9aa4b5;
+    --cizgi: #2e3644;
+    --vurgu: #7aa7ff;
+    --vurgu-acik: #1f2c45;
+    --iyi: #6fd39b;
+    --iyi-acik: #173325;
+    --kotu: #ff8a80;
+    --kotu-acik: #3a1d1b;
+    --dikkat: #f2c25b;
+    --dikkat-acik: #3a2f14;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--zemin);
+  color: var(--metin);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.kap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+.ust { background: var(--yuzey); border-bottom: 1px solid var(--cizgi); padding: 20px 0 12px; margin-bottom: 20px; }
+.ust h1 { margin: 0; font-size: 26px; color: var(--vurgu); }
+.ust p { margin: 4px 0 0; color: var(--soluk); }
+
+.kart { background: var(--yuzey); border: 1px solid var(--cizgi); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.kart h2 { margin: 0 0 12px; font-size: 17px; }
+.kart h3 { font-size: 15px; margin: 20px 0 6px; }
+
+.izgara { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--soluk); }
+label.onay { flex-direction: row; align-items: center; gap: 6px; color: var(--metin); }
+select, input[type=number], input[type=month], button {
+  font: inherit; padding: 7px 9px; border: 1px solid var(--cizgi); border-radius: 6px;
+  background: var(--yuzey); color: var(--metin);
+}
+button { cursor: pointer; }
+
+.sekmeler { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--cizgi); margin-bottom: 12px; }
+.sekmeler button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; padding: 10px 12px; white-space: nowrap; color: var(--soluk); }
+.sekmeler button[aria-selected=true] { color: var(--vurgu); border-bottom-color: var(--vurgu); font-weight: 600; }
+
+.filtre { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; margin-bottom: 10px; }
+.ozet { color: var(--soluk); margin: 6px 0 10px; font-size: 13px; }
+
+.liste { display: grid; gap: 10px; }
+.dergi { background: var(--yuzey); border: 1px solid var(--cizgi); border-left: 4px solid var(--iyi); border-radius: 8px; padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; }
+.dergi.uygunsuz { border-left-color: var(--kotu); opacity: .85; }
+.dergi h3 { margin: 0; font-size: 15px; }
+.dergi h3 a { color: inherit; }
+.dergi .alt-bilgi { color: var(--soluk); font-size: 13px; }
+.dergi .tarih { text-align: right; }
+.dergi .tarih strong { display: block; font-size: 18px; }
+.dergi .tarih span { font-size: 12px; color: var(--soluk); }
+.metrikler { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; }
+.metrikler b { font-weight: 600; }
+.rozetler { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.rozet { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--vurgu-acik); color: var(--vurgu); }
+.rozet.kotu { background: var(--kotu-acik); color: var(--kotu); }
+.rozet.dikkat { background: var(--dikkat-acik); color: var(--dikkat); }
+.rozet.iyi { background: var(--iyi-acik); color: var(--iyi); }
+
+.uyari { background: var(--dikkat-acik); color: var(--dikkat); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 14px; }
+.bos { padding: 24px; text-align: center; color: var(--soluk); background: var(--yuzey); border: 1px dashed var(--cizgi); border-radius: 8px; }
+.durum { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; font-size: 14px; }
+.durum dt { color: var(--soluk); }
+.durum dd { margin: 0; }
+code { background: var(--zemin); padding: 1px 4px; border-radius: 4px; }
+.alt { color: var(--soluk); font-size: 12px; padding-top: 24px; padding-bottom: 32px; }
+
+@media (max-width: 560px) {
+  .dergi { grid-template-columns: 1fr; }
+  .dergi .tarih { text-align: left; }
+}
