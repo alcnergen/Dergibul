@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """
-TR Dizin dergi listesini DergiPark'tan ölçülen sürelerle zenginleştirip data/trdizin.json üretir.
+TR Dizin dergi listesini otomatik çeker, DergiPark'tan ölçülen sürelerle zenginleştirip
+data/trdizin.json üretir.
 
-Girdi: data/kaynak/trdizin_dergiler.csv (sütunlar README'de). Her çalıştırmada en eski ölçülmüş
---max-dergi kadar dergi yeniden ölçülür; diğerlerinin önceki ölçümleri korunur. Böylece tüm liste
-birkaç haftalık otomatik çalıştırmayla döner ve DergiPark'a yük bindirilmez.
+1. Liste: search.trdizin.gov.tr JSON API'si (scripts/trdizin_api.py). Elle giriş gerekmez.
+2. Her dergi için DergiPark adresi TR Dizin kaydından ya da DergiPark aramasından (ISSN) bulunur.
+3. DergiPark ana sayfası/duyurularından yayın sıklığı ve "… yılına kadar dolu" duyuruları okunur.
+4. Son sayılardaki makalelerin gönderim/kabul/yayın tarihlerinden ortalama süreler ölçülür.
+
+Her çalıştırmada en eski ölçülmüş --max-dergi kadar dergi yeniden ölçülür; diğerlerinin önceki
+ölçümleri korunur. İsteğe bağlı data/kaynak/duzeltmeler.csv, otomatik değerleri ISSN eşleşmesiyle
+ezer (yalnızca otomatik bulunamayan ya da yanlış çıkan değerler için).
 
 Örnek:  python3 scripts/trdizin_guncelle.py --max-dergi 100
 """
@@ -15,10 +21,12 @@ import statistics
 import sys
 from datetime import date
 from pathlib import Path
+from urllib.parse import urlencode
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ortak import (Getirici, csv_oku, etiketli_tarih, html_metin, issn_normal, json_oku,  # noqa: E402
                    json_yaz, liste, sayi)
+from trdizin_api import kayit_normallestir, periyot_coz, tum_dergiler  # noqa: E402
 
 KOK = Path(__file__).resolve().parent.parent
 GONDERIM = ["Gönderilme Tarihi", "Gönderim Tarihi", "Submission Date"]
@@ -129,11 +137,57 @@ def dergi_olc(getirici, kok, sayi_adedi, makale_adedi):
     return sureleri_hesapla(makaleler, sayi_tarihleri)
 
 
+def dergipark_bul(getirici, satir):
+    """ISSN (yoksa ad) ile DergiPark'ta arar; ilk dergi bağlantısının kökünü döndürür."""
+    for sorgu in (satir.get("issn"), satir.get("eissn"), satir.get("ad")):
+        if not sorgu:
+            continue
+        html = getirici.getir("https://dergipark.org.tr/tr/search?" + urlencode({"q": sorgu, "section": "journal"}))
+        m = re.search(r"dergipark\.org\.tr/(?:tr|en)/pub/([\w-]+)|[\"']/(?:tr|en)/pub/([\w-]+)", html or "")
+        if m:
+            return dergipark_kok(m.group(1) or m.group(2))
+    return None
+
+
+DOLULUK_DESENLERI = [
+    # "2027 yılı sonuna kadar dolu", "2027 yılının tüm sayıları dolmuştur" -> 2028
+    (re.compile(r"(20\d{2})\s*yılı(?:nın)?\s*(?:sonuna kadar|tüm sayıları|sayıları|sayılarımız)[^.]{0,60}?dol", re.I), 1),
+    # "2028 yılına kadar dolu" / "sayılarımız 2028 yılına kadar doludur" -> 2028
+    (re.compile(r"(20\d{2})\s*yılına kadar[^.]{0,60}?dol", re.I), 0),
+    (re.compile(r"dol(?:u|muş)[^.]{0,60}?(20\d{2})\s*yılına kadar", re.I), 0),
+    (re.compile(r"(?:first available|next available)[^.]{0,40}?(20\d{2})", re.I), 0),
+]
+GONDERIM_KAPALI = re.compile(r"makale (?:kabul(?:ü)?|gönderim(?:i)?)[^.]{0,40}?(?:kapalı|durdurul|kapatıl|"
+                             r"kabul (?:edilme|etme)mekte)|not accepting (?:new )?(?:submissions|manuscripts)", re.I)
+
+
+def anasayfa_coz(html):
+    """DergiPark ana sayfa/duyuru metninden yıllık sayı, ilk boş sayı ve gönderim durumu çıkarır."""
+    metin = html_metin(html)
+    sonuc = {}
+    m = re.search(r"(?:Yayın Aralığı|Yayın Sıklığı|Periyot|Frequency)\s*:?\s*(.{0,40})", metin, re.I)
+    if m and periyot_coz(m.group(1)):
+        sonuc["yillikSayi"] = periyot_coz(m.group(1))
+    yillar = []
+    for desen, ek in DOLULUK_DESENLERI:
+        for e in desen.finditer(metin):
+            yil = int(e.group(1)) + ek
+            if date.today().year <= yil <= date.today().year + 6:
+                yillar.append(yil)
+    if yillar:
+        sonuc["ilkBosSayi"] = str(max(yillar))
+        sonuc["ilkBosSayiKaynak"] = "dergi duyurusu"
+    if GONDERIM_KAPALI.search(metin):
+        sonuc["gonderimKapali"] = True
+    return sonuc
+
+
 def satirdan_dergi(satir):
     issn = issn_normal(satir.get("issn")) or issn_normal(satir.get("eissn"))
     kok = dergipark_kok(satir.get("dergipark"))
     return {
         "id": issn or (kok or satir.get("ad", "")).rsplit("/", 1)[-1],
+        "trdizinId": satir.get("trdizinId") or None,
         "ad": (satir.get("ad") or "").strip(),
         "issn": issn,
         "eissn": issn_normal(satir.get("eissn")),
@@ -141,6 +195,7 @@ def satirdan_dergi(satir):
         "url": (satir.get("url") or "").strip() or kok or "",
         "dergipark": kok,
         "alanlar": liste(satir.get("alanlar")),
+        "konular": liste(satir.get("konular")),
         "diller": liste(satir.get("diller")),
         "kabulEdilenTurler": liste(satir.get("kabulEdilenTurler")),
         "yillikSayi": sayi(satir.get("yillikSayi")),
@@ -156,15 +211,37 @@ def satirdan_dergi(satir):
 
 
 def olcumu_uygula(dergi, olcum):
-    """Ölçülen değerleri dergiye işler; CSV'de elle girilmiş değerler önceliklidir."""
+    """Ölçülen değerleri dergiye işler; TR Dizin ya da düzeltme dosyasındaki değerler önceliklidir."""
     for k in ("ortKabulGun", "ortKabulYayinGun", "ortToplamGun", "olcumMakaleSayisi", "olcumTarihi"):
         if olcum.get(k) is not None:
             dergi[k] = olcum[k]
-    if not dergi["yillikSayi"] and olcum.get("tahminiYillikSayi"):
-        dergi["yillikSayi"] = olcum["tahminiYillikSayi"]
+    if not dergi["yillikSayi"]:
+        dergi["yillikSayi"] = olcum.get("yillikSayi") or olcum.get("tahminiYillikSayi")
     if not dergi["kabulEdilenTurler"] and olcum.get("gozlenenTurler"):
         dergi["kabulEdilenTurler"] = olcum["gozlenenTurler"]
+    if not dergi["ilkBosSayi"] and olcum.get("ilkBosSayi"):
+        dergi["ilkBosSayi"] = olcum["ilkBosSayi"]
+        dergi["ilkBosSayiKaynak"] = olcum.get("ilkBosSayiKaynak")
+    if olcum.get("gonderimKapali"):
+        dergi["gonderimKapali"] = True
     dergi["dogrulandi"] = bool(olcum.get("olcumMakaleSayisi"))
+
+
+def duzeltmeleri_uygula(satirlar, duzeltmeler):
+    """duzeltmeler.csv'deki dolu hücreler, ISSN ya da e-ISSN eşleşen otomatik satırın üzerine yazılır."""
+    dizin = {}
+    for s in satirlar:
+        for k in (issn_normal(s.get("issn")), issn_normal(s.get("eissn"))):
+            if k:
+                dizin[k] = s
+    for d in duzeltmeler:
+        hedef = dizin.get(issn_normal(d.get("issn"))) or dizin.get(issn_normal(d.get("eissn")))
+        if hedef is None:
+            if (d.get("ad") or "").strip():
+                satirlar.append(dict(d))  # TR Dizin API'sinde olmayan dergi elle eklenmiş
+            continue
+        hedef.update({k: v for k, v in d.items() if k and (v or "").strip()})
+    return satirlar
 
 
 def wos_etiketle(dergiler, uluslararasi):
@@ -179,52 +256,100 @@ def wos_etiketle(dergiler, uluslararasi):
         d["endeksler"] = sorted(set(d["endeksler"]) | ek)
 
 
+def onceki_olcum(onceki):
+    """Önceki çalıştırmanın kaydını olcumu_uygula'nın beklediği biçime çevirir."""
+    o = dict(onceki)
+    o["gozlenenTurler"] = onceki.get("kabulEdilenTurler")
+    if onceki.get("ilkBosSayiKaynak") != "dergi duyurusu":
+        o.pop("ilkBosSayi", None)  # elle girilen değer düzeltme dosyasından tekrar gelir
+    return o
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--girdi", default=KOK / "data/kaynak/trdizin_dergiler.csv")
+    ap.add_argument("--girdi", help="TR Dizin API'si yerine bu CSV'den oku (çevrimdışı kullanım)")
+    ap.add_argument("--duzeltmeler", default=KOK / "data/kaynak/duzeltmeler.csv")
     ap.add_argument("--cikti", default=KOK / "data/trdizin.json")
     ap.add_argument("--max-dergi", type=int, default=100, help="bu çalıştırmada ölçülecek en fazla dergi")
     ap.add_argument("--sayi", type=int, default=4, help="dergi başına incelenecek son sayı adedi")
     ap.add_argument("--makale", type=int, default=6, help="sayı başına incelenecek makale adedi")
+    ap.add_argument("--min-dergi", type=int, default=50,
+                    help="TR Dizin'den bundan az dergi gelirse mevcut liste korunur")
     ap.add_argument("--bekleme", type=float, default=0.7, help="istekler arası saniye")
     args = ap.parse_args()
 
-    satirlar = csv_oku(args.girdi)
-    if not satirlar:
-        sys.exit(f"{args.girdi} boş ya da bulunamadı.")
+    getirici = Getirici(bekleme=args.bekleme)
     eski = json_oku(args.cikti, {}) or {}
-    eski_olcum = {} if eski.get("meta", {}).get("ornek") else {d["id"]: d for d in eski.get("dergiler", [])}
+    eski_dergiler = [] if eski.get("meta", {}).get("ornek") else eski.get("dergiler", [])
 
-    dergiler = [satirdan_dergi(s) for s in satirlar if (s.get("ad") or "").strip()]
-    for d in dergiler:
-        onceki = eski_olcum.get(d["id"])
-        if onceki and onceki.get("olcumTarihi"):
-            olcumu_uygula(d, onceki | {"gozlenenTurler": onceki.get("kabulEdilenTurler"),
-                                       "tahminiYillikSayi": onceki.get("yillikSayi")})
+    if args.girdi:
+        satirlar, kaynak = csv_oku(args.girdi), "CSV"
+    else:
+        print("TR Dizin listesi çekiliyor…")
+        satirlar = [kayit_normallestir(k) for k in tum_dergiler(getirici)]
+        pasif = sum(1 for s in satirlar if not s["aktif"])
+        satirlar = [s for s in satirlar if s["aktif"]]
+        kaynak = "TR Dizin API"
+        print(f"  {len(satirlar)} aktif dergi ({pasif} pasif/çıkarılmış atlandı)")
+        # API kesintisi listeyi silmesin
+        if len(satirlar) < max(args.min_dergi, len(eski_dergiler) // 2):
+            sys.exit(f"TR Dizin'den yalnızca {len(satirlar)} dergi geldi; mevcut liste korunuyor.")
+    if Path(args.duzeltmeler).exists():
+        satirlar = duzeltmeleri_uygula(satirlar, csv_oku(args.duzeltmeler))
+    if not satirlar:
+        sys.exit("Dergi listesi boş.")
+
+    eski_dizin = {d["id"]: d for d in eski_dergiler}
+    dergiler, gorulen = [], set()
+    for s in satirlar:
+        if not (s.get("ad") or "").strip():
+            continue
+        d = satirdan_dergi(s)
+        if d["id"] in gorulen:
+            continue
+        gorulen.add(d["id"])
+        onceki = eski_dizin.get(d["id"], {})
+        d["dergipark"] = d["dergipark"] or onceki.get("dergipark")
+        if onceki.get("olcumTarihi"):
+            olcumu_uygula(d, onceki_olcum(onceki))
+        dergiler.append(d)
 
     # En uzun süredir ölçülmeyenler önce
-    sira = sorted((d for d in dergiler if d["dergipark"]), key=lambda d: d.get("olcumTarihi") or "")
-    getirici = Getirici(bekleme=args.bekleme)
+    sira = sorted(dergiler, key=lambda d: d.get("olcumTarihi") or "")[: args.max_dergi]
     bugun = date.today().isoformat()
-    for i, d in enumerate(sira[: args.max_dergi], 1):
-        print(f"[{i}/{min(len(sira), args.max_dergi)}] {d['ad']}")
-        olcum = dergi_olc(getirici, d["dergipark"], args.sayi, args.makale)
-        if olcum:
-            olcum["olcumTarihi"] = bugun
-            olcumu_uygula(d, olcum)
+    for i, d in enumerate(sira, 1):
+        print(f"[{i}/{len(sira)}] {d['ad']}")
+        # Duyurudan gelen bilgiler her ölçümde yeniden okunur; eskisi kalmasın
+        d.pop("gonderimKapali", None)
+        if d.get("ilkBosSayiKaynak") == "dergi duyurusu":
+            d["ilkBosSayi"] = None
+            del d["ilkBosSayiKaynak"]
+        if not d["dergipark"]:
+            d["dergipark"] = dergipark_bul(getirici, d)
+            if not d["dergipark"]:
+                print("  DergiPark'ta bulunamadı")
+                d["olcumTarihi"] = bugun  # sıranın sonuna at, sonraki turda tekrar denenir
+                continue
+            d["url"] = d["url"] or d["dergipark"]
+        olcum = dergi_olc(getirici, d["dergipark"], args.sayi, args.makale) or {}
+        for sayfa in ("", "/announcement"):
+            html = getirici.getir(d["dergipark"] + sayfa)
+            if html:
+                olcum |= {k: v for k, v in anasayfa_coz(html).items() if k not in olcum}
+        olcum["olcumTarihi"] = bugun
+        olcumu_uygula(d, olcum)
 
     for d in dergiler:
         d.setdefault("dogrulandi", False)
-        d.pop("dergipark", None)
     wos_etiketle(dergiler, json_oku(KOK / "data/uluslararasi.json"))
 
     json_yaz(args.cikti, {
         "meta": {
             "ornek": False,
             "guncelleme": bugun,
-            "kaynak": "TR Dizin listesi + DergiPark makale tarihleri",
+            "kaynak": kaynak + " + DergiPark makale tarihleri",
             "dergiSayisi": len(dergiler),
-            "olculenDergi": sum(1 for d in dergiler if d.get("olcumTarihi")),
+            "olculenDergi": sum(1 for d in dergiler if d.get("olcumMakaleSayisi")),
         },
         "dergiler": dergiler,
     })

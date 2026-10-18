@@ -5,7 +5,11 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+import json  # noqa: E402
+from unittest import mock  # noqa: E402
+
 import ortak  # noqa: E402
+import trdizin_api as api  # noqa: E402
 import trdizin_guncelle as tr  # noqa: E402
 import uluslararasi_guncelle as ul  # noqa: E402
 
@@ -53,6 +57,92 @@ class DergiPark(unittest.TestCase):
         self.assertEqual(s["olcumMakaleSayisi"], 2)
         self.assertEqual(s["tahminiYillikSayi"], 4)
         self.assertEqual(s["gozlenenTurler"], ["arastirma"])
+
+
+class TrDizinApi(unittest.TestCase):
+    KAYIT = {
+        "id": 42, "name": "Örnek Eğitim Dergisi", "issn": "1234-5678", "eIssn": "8765432X",
+        "publisher": {"name": "Örnek Üniversitesi", "id": 9},
+        "webAddress": "https://dergipark.org.tr/tr/pub/ornek",
+        "subjects": [{"name": "Eğitim, Eğitim Araştırmaları"}, {"name": "Sosyal Bilimler, Genel"}],
+        "languages": ["Türkçe", "İngilizce"], "period": "Yılda 4 Sayı", "status": "Aktif",
+    }
+
+    def test_normallestir(self):
+        s = api.kayit_normallestir(self.KAYIT)
+        self.assertEqual((s["ad"], s["issn"], s["eissn"]), ("Örnek Eğitim Dergisi", "1234-5678", "8765-432X"))
+        self.assertEqual(s["dergipark"], "https://dergipark.org.tr/tr/pub/ornek")
+        self.assertEqual(s["yayinci"], "Örnek Üniversitesi")
+        self.assertEqual(s["alanlar"], "Eğitim Bilimleri|Sosyal Bilimler")
+        self.assertEqual((s["diller"], s["yillikSayi"], s["aktif"]), ("en|tr", "4", True))
+        self.assertFalse(api.kayit_normallestir(self.KAYIT | {"status": "Dizinden çıkarıldı"})["aktif"])
+
+    def test_periyot(self):
+        for metin, n in [("Yılda 3 Sayı", 3), ("3 ayda bir", 4), ("Quarterly", 4), ("Altı Aylık", 2),
+                         ("Aylık", 12), ("Bimonthly", 6), ("2", 2), ("belirsiz", None)]:
+            self.assertEqual(api.periyot_coz(metin), n, metin)
+
+    def test_sayfalama(self):
+        sayfalar = {1: [{"_id": "a", "_source": {"name": "A"}}, {"_id": "b", "_source": {"name": "B"}}],
+                    2: [{"_id": "c", "_source": {"name": "C"}}], 3: []}
+        g = mock.Mock()
+        g.getir.side_effect = lambda url: json.dumps(
+            {"hits": {"total": {"value": 3}, "hits": sayfalar[int(url.split("page=")[1].split("&")[0])]}})
+        self.assertEqual([k["name"] for k in api.tum_dergiler(g, limit=2)], ["A", "B", "C"])
+
+
+class Duyuru(unittest.TestCase):
+    def test_doluluk(self):
+        yil = date.today().year
+        h = f"<p>Yayın Aralığı: Yılda 4 Sayı</p><p>Dergimizin {yil + 1} yılı sonuna kadar tüm sayıları dolmuştur.</p>"
+        self.assertEqual(tr.anasayfa_coz(h), {"yillikSayi": 4, "ilkBosSayi": str(yil + 2),
+                                              "ilkBosSayiKaynak": "dergi duyurusu"})
+        self.assertEqual(tr.anasayfa_coz(f"Sayılarımız {yil + 2} yılına kadar doludur.")["ilkBosSayi"], str(yil + 2))
+        self.assertTrue(tr.anasayfa_coz("Yeni makale kabulü geçici olarak kapalıdır.")["gonderimKapali"])
+        self.assertEqual(tr.anasayfa_coz("Kuruluş 1998. Hakemli dergi."), {})
+
+    def test_duzeltmeler(self):
+        satirlar = [{"ad": "A", "issn": "1234-5678", "ilkBosSayi": ""}]
+        tr.duzeltmeleri_uygula(satirlar, [{"issn": "12345678", "ilkBosSayi": "2028-01", "ad": ""},
+                                          {"ad": "Elle", "issn": "1111-2222"}])
+        self.assertEqual(satirlar[0]["ilkBosSayi"], "2028-01")
+        self.assertEqual(satirlar[0]["ad"], "A")
+        self.assertEqual(len(satirlar), 2)
+
+
+class UcuncuUc(unittest.TestCase):
+    """Ağ yerine sahte yanıtlarla tüm akış: TR Dizin -> DergiPark arama -> ölçüm -> JSON."""
+
+    def test_akis(self):
+        dp = "https://dergipark.org.tr/tr/pub/ornek"
+        yanitlar = {
+            "trdizin": json.dumps({"hits": {"total": {"value": 1}, "hits": [
+                {"_id": "7", "_source": {"name": "Örnek Dergi", "issn": "1234-5678", "period": "Yılda 3 Sayı"}}]}}),
+            "/tr/search": f'<a href="{dp}">Örnek</a>',
+            f"{dp}/archive": f'<a href="{dp}/issue/20">',
+            f"{dp}/issue/20": f'<a href="{dp}/issue/20/300">',
+            f"{dp}/issue/20/300": "Gönderilme Tarihi 01.01.2026 Kabul Tarihi 01.03.2026 Yayımlanma Tarihi 01.04.2026 "
+                                  "Makale Türü Araştırma Makalesi",
+            f"{dp}/announcement": "Dergimiz 2030 yılına kadar doludur.",
+        }
+
+        def getir(url):
+            if "trdizin.gov.tr" in url:
+                return yanitlar["trdizin"] if "page=1&" in url else json.dumps({"hits": {"hits": []}})
+            if "/tr/search" in url:
+                return yanitlar["/tr/search"]
+            return yanitlar.get(url, "")
+
+        with tempfile.TemporaryDirectory() as k, \
+                mock.patch.object(tr.Getirici, "getir", side_effect=getir), \
+                mock.patch.object(sys, "argv", ["x", "--cikti", f"{k}/c.json", "--duzeltmeler", f"{k}/yok.csv",
+                                                   "--min-dergi", "1"]), \
+                mock.patch.object(tr, "date", mock.Mock(today=lambda: date(2026, 10, 18))):
+            tr.main()
+            d = json.loads(Path(k, "c.json").read_text())["dergiler"][0]
+        self.assertEqual((d["dergipark"], d["yillikSayi"], d["ortToplamGun"]), (dp, 3, 90))
+        self.assertEqual(d["kabulEdilenTurler"], ["arastirma"])
+        self.assertEqual((d["ilkBosSayi"], d["ilkBosSayiKaynak"]), ("2030", "dergi duyurusu"))
 
 
 class Uluslararasi(unittest.TestCase):

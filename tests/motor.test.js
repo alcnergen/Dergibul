@@ -35,6 +35,12 @@ test("dil, ücret, kelime ve hedef tarih engelleri", () => {
   assert.equal(r.engeller.length, 4);
 });
 
+test("gönderimi kapalı dergi uygun değil", () => {
+  const r = M.uygunlukDegerlendir(d({ gonderimKapali: true }), {}, bugun);
+  assert.equal(r.uygun, false);
+  assert.match(r.engeller[0], /kapalı/);
+});
+
 test("TR Dizin listesi: 3-4 sayı, dolu gizli, tarihe göre sıralı", () => {
   const liste = M.trDizinListele([
     d({ ad: "yavas", ortKabulYayinGun: 300 }),

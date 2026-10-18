@@ -21,29 +21,45 @@ python3 -m http.server 8000   # sonra http://localhost:8000
 
 ## Gerçek veriyi doldurma
 
-### 1. TR Dizin listesi
-
-1. TR Dizin'in yayımladığı dizinlenen dergi listesini indirin.
-2. `data/kaynak/trdizin_dergiler.sablon.csv` dosyasını `data/kaynak/trdizin_dergiler.csv` adıyla kopyalayın ve dergileri bu sütunlara göre doldurun.
-
-| Sütun | Açıklama |
-|---|---|
-| `ad`, `issn`, `eissn`, `yayinci` | Künye bilgileri |
-| `dergipark` | DergiPark adresi ya da kısa adı (ölçüm için gerekli) |
-| `alanlar` | `\|` ile ayrılmış alanlar, ör. `Eğitim Bilimleri\|Sosyal Bilimler` |
-| `diller` | `tr\|en` |
-| `kabulEdilenTurler` | `arastirma\|derleme\|sistematik\|olgu\|kisa\|kitap\|ceviri\|tez`. Boş bırakılırsa son sayılarda görülen türler kullanılır. |
-| `yillikSayi` | Boş bırakılırsa yayın tarihlerinden tahmin edilir |
-| `ilkBosSayi` | Derginin ilan ettiği ilk boş sayı, `YYYY-AA` biçiminde. 2028 veya sonrası ise dergi "dolu" sayılır. |
-| `ortIlkKararGun`, `maxKelime`, `apc`, `apcBirim`, `etikKurulZorunlu`, `endeksler` | İsteğe bağlı alanlar |
-
-3. Ölçümü çalıştırın:
+### 1. TR Dizin listesi (tamamen otomatik)
 
 ```bash
 python3 scripts/trdizin_guncelle.py --max-dergi 100
 ```
 
-Betik her dergi için DergiPark arşivinden son 4 sayıyı açar ve her sayıdan 6 makale inceler. Makale sayfalarındaki **Gönderilme / Kabul / Yayımlanma** tarihlerinden ortalama süreleri hesaplar. Her çalıştırmada en uzun süredir ölçülmemiş dergiler önce ele alınır, diğerlerinin önceki ölçümleri korunur. Böylece tüm liste birkaç haftalık otomatik çalıştırmayla dolar ve DergiPark'a fazla yük binmez.
+Bu komut elle giriş gerektirmeden şu adımları izler:
+
+1. **Liste:** Dizindeki tüm dergileri `search.trdizin.gov.tr` sitesinin herkese açık JSON API'sinden sayfa sayfa çeker. Dizinden çıkarılmış ya da pasif görünen dergileri atlar. Gelen dergi sayısı beklenenden çok azsa (API kesintisi gibi) mevcut listeyi silmez, durur.
+2. **DergiPark adresi:** Önce TR Dizin kaydındaki adrese bakar. Adres yoksa DergiPark'ta ISSN ile, o da sonuç vermezse dergi adıyla arar.
+3. **Sıklık ve doluluk:** DergiPark ana sayfasından ve duyurulardan şunları okur:
+   - yayın sıklığı
+   - "… yılına kadar dolu" / "… yılı sayıları dolmuştur" duyuruları (`ilkBosSayi`, kaynak: *dergi duyurusu*)
+   - "makale kabulü kapalı" duyuruları
+4. **Süreler:** Son 4 sayıdan, her sayıda 6 makale inceler. Makale sayfalarındaki **Gönderilme / Kabul / Yayımlanma** tarihlerinden ortalama süreleri hesaplar. Sıklık başka yerden bulunamazsa sayıların yayın aralıklarından tahmin eder. Kabul edilen çalışma türlerini de bu makalelerin türlerinden çıkarır.
+
+Her çalıştırmada en uzun süredir ölçülmemiş dergiler önce ele alınır, diğerlerinin önceki ölçümleri korunur. Böylece yaklaşık 2.000 dergilik liste birkaç haftalık otomatik çalıştırmayla dolar ve sitelere fazla yük binmez.
+
+TR Dizin API'si dergi kayıtlarının alan adlarını belgelemiyor. Bu yüzden kayıtlar alan adlarına değil, anlamlarına göre (issn, publisher, subject, period…) eşlenir. Eşlemeyi kontrol etmek için:
+
+```bash
+python3 scripts/trdizin_api.py --incele
+```
+
+Bu komut ilk ham kaydı ve normalleştirilmiş halini yazdırır. Otomatik iş de her çalıştırmada aynı çıktıyı log'a basar.
+
+**Düzeltmeler (isteğe bağlı):** Otomatik bulunamayan ya da yanlış çıkan değerler `data/kaynak/duzeltmeler.csv` dosyasına yazılabilir (şablon: `duzeltmeler.sablon.csv`).
+
+- Satırlar ISSN ile eşleşir ve yalnızca dolu hücreler otomatik değerin üzerine yazar.
+- TR Dizin API'sinde bulunmayan bir dergi, ad sütunu doldurularak eklenebilir.
+- Çevrimdışı çalışmak için `--girdi liste.csv` ile API yerine bir CSV dosyası verilebilir.
+
+| Sütun | Açıklama |
+|---|---|
+| `alanlar` | `\|` ile ayrılmış alanlar, ör. `Eğitim Bilimleri\|Sosyal Bilimler` |
+| `diller` | `tr\|en` |
+| `kabulEdilenTurler` | `arastirma\|derleme\|sistematik\|olgu\|kisa\|kitap\|ceviri\|tez` |
+| `ilkBosSayi` | `YYYY-AA` biçiminde. 2028 veya sonrası ise dergi "dolu" sayılır. |
+| `dergipark`, `yillikSayi`, `ortIlkKararGun`, `maxKelime`, `apc`, `apcBirim`, `etikKurulZorunlu`, `endeksler` | Diğer alanlar |
 
 ### 2. Yurtdışı ve ESCI listesi
 
@@ -63,14 +79,14 @@ python3 scripts/uluslararasi_guncelle.py \
 
 1. SJR verisini indirmeyi dener.
 2. `data/kaynak/wos/*.csv` dosyalarını okur.
-3. `trdizin_dergiler.csv` varsa DergiPark ölçümünü yapar.
+3. TR Dizin listesini API'den çeker ve DergiPark ölçümünü yapar.
 4. Değişen JSON dosyalarını commit'ler.
 
 İş, Actions sekmesinden elle de başlatılabilir.
 
 ## Sitede veri yükleme
 
-**Veri** sekmesinden JSON ya da CSV dosyası yüklenebilir. CSV sütunları yukarıdaki tablodakilerle aynıdır. Dosya yalnızca tarayıcıda okunur, sunucuya gönderilmez.
+**Veri** sekmesinden JSON ya da CSV dosyası yüklenebilir. CSV'de `ad` ve `issn` sütunlarının yanında yukarıdaki tablodaki sütunlar kullanılabilir. Dosya yalnızca tarayıcıda okunur, sunucuya gönderilmez.
 
 ## Testler
 

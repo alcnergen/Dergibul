@@ -104,6 +104,7 @@
     if (calisma.etikKurul === false && dergi.etikKurulZorunlu) {
       uyarilar.push("Etik kurul izni isteniyor");
     }
+    if (dergi.gonderimKapali) engeller.push("Makale gönderimi kapalı");
     if (doluMu(dergi)) {
       engeller.push("İlk boş sayı " + dergi.ilkBosSayi + " (" + DOLULUK_SINIR_YILI + "+ dolu)");
     }

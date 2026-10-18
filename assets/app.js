@@ -105,7 +105,7 @@
     metrik("Gönderim → kabul", gun(d.ortKabulGun));
     metrik("Kabul → yayın", gun(d.ortKabulYayinGun));
     metrik("Toplam", gun(Motor.ortalamaToplamGun(d)));
-    metrik("İlk boş sayı", d.ilkBosSayi || "—");
+    metrik("İlk boş sayı", d.ilkBosSayi ? d.ilkBosSayi + (d.ilkBosSayiKaynak ? " (" + d.ilkBosSayiKaynak + ")" : "") : "—");
     metrik("Ücret", d.apc ? d.apc + " " + (d.apcBirim || "TL") : "Yok");
     if (d.ceyrek) metrik("Çeyrek", d.ceyrek);
     kart.append(m);

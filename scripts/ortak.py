@@ -17,12 +17,22 @@ TR_AYLAR = {
     "august": 8, "september": 9, "october": 10, "november": 11, "december": 12,
 }
 
+def _ay(ad):
+    k = kucuk(ad)
+    return TR_AYLAR.get(k) or TR_AYLAR.get(k.replace("ı", "i"))
+
+
 _TARIH_DESENLERI = [
     (re.compile(r"\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b"), lambda m: (int(m[3]), int(m[2]), int(m[1]))),
     (re.compile(r"\b(\d{4})-(\d{1,2})-(\d{1,2})\b"), lambda m: (int(m[1]), int(m[2]), int(m[3]))),
     (re.compile(r"\b(\d{1,2})\s+([A-Za-zÇĞİÖŞÜçğıöşü]+)\s+(\d{4})\b"),
-     lambda m: (int(m[3]), TR_AYLAR.get(m[2].lower().replace("i̇", "i")), int(m[1]))),
+     lambda m: (int(m[3]), _ay(m[2]), int(m[1]))),
 ]
+
+
+def kucuk(metin):
+    """Türkçe uyumlu küçük harf: 'İ'.lower() birleşik nokta bırakmasın."""
+    return str(metin or "").replace("İ", "i").replace("I", "ı").lower()
 
 
 def tarih_bul(metin):
