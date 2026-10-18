@@ -38,7 +38,7 @@ Bu komut elle giriş gerektirmeden şu adımları izler:
 4. **Resmî istatistikler:** DergiPark "Kabul-Ret İstatistikleri" sayfasından en güncel yılın kabul oranı ile gönderimden kabul/ret kararına ortalama süreler okunur (`kabulOrani`, `ortIlkKararGun`, `resmiKabulGun`). Kabul oranı %20'nin altındaysa sitede uyarı gösterilir.
 5. **Süreler:** Son 4 sayıdan, her sayıda 6 makale inceler. Makale sayfalarındaki **Gönderilme / Kabul / Yayımlanma** tarihlerinden ortalama süreleri hesaplar. Sıklık başka yerden bulunamazsa sayıların yayın aralıklarından tahmin eder. Kabul edilen çalışma türlerini de bu makalelerin türlerinden çıkarır.
 
-Her çalıştırmada en uzun süredir ölçülmemiş dergiler önce ele alınır, diğerlerinin önceki ölçümleri korunur. Böylece yaklaşık 2.000 dergilik liste birkaç haftalık otomatik çalıştırmayla dolar ve sitelere fazla yük binmez.
+Her çalıştırmada en uzun süredir ölçülmemiş dergiler önce ele alınır, diğerlerinin önceki ölçümleri korunur. Böylece TR Dizin'deki yaklaşık 1.350 aktif dergi birkaç günlük otomatik çalıştırmayla ölçülür ve sitelere fazla yük binmez.
 
 TR Dizin API'si dergi kayıtlarının alan adlarını belgelemiyor. Bu yüzden kayıtlar alan adlarına değil, anlamlarına göre (issn, publisher, subject, period…) eşlenir. Eşlemeyi kontrol etmek için:
 
@@ -76,7 +76,7 @@ python3 scripts/uluslararasi_guncelle.py \
 
 ### 3. Otomatik güncelleme
 
-`.github/workflows/veri-guncelle.yml` her pazartesi şu adımları çalıştırır:
+`.github/workflows/veri-guncelle.yml` her gün şu adımları çalıştırır (her çalıştırmada 150 dergi ölçülür, tüm liste yaklaşık 9 günde dolar):
 
 1. SJR verisini indirmeyi dener.
 2. `data/kaynak/wos/*.csv` dosyalarını okur.
