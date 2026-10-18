@@ -44,7 +44,11 @@ class DergiPark(unittest.TestCase):
         self.assertEqual(tr.makale_baglantilari(sayi, KOK), [f"{KOK}/issue/12/555", f"{KOK}/article/777"])
 
     def test_makale(self):
-        html = """<table><tr><td>Makale Türü</td><td>Derleme</td></tr>
+        gercek = ("Konular Çeviri ve Yorum Çalışmaları Bölüm Araştırma Makalesi Yazarlar Nahide Arslan * Türkiye "
+                  "Yayımlanma Tarihi 28 Eylül 2026 Gönderilme Tarihi 27 Ocak 2026 Kabul Tarihi 29 Ağustos 2026")
+        self.assertEqual(tr.makale_olc(gercek), {"gonderim": date(2026, 1, 27), "kabul": date(2026, 8, 29),
+                                                 "yayin": date(2026, 9, 28), "tur": "arastirma"})
+        html = """<table><tr><td>Bölüm</td><td>Derleme</td></tr><tr><td>Yazarlar</td></tr>
         <tr><th>Gönderilme Tarihi</th><td>1 Ocak 2024</td></tr>
         <tr><th>Kabul Tarihi</th><td>31.03.2024</td></tr>
         <tr><th>Yayımlanma Tarihi</th><td>30 Haziran 2024</td></tr></table>"""
@@ -122,6 +126,14 @@ class Duyuru(unittest.TestCase):
                                               "ilkBosSayiKaynak": "dergi duyurusu"})
         self.assertEqual(tr.anasayfa_coz(f"Sayılarımız {yil + 2} yılına kadar doludur.")["ilkBosSayi"], str(yil + 2))
         self.assertTrue(tr.anasayfa_coz("Yeni makale kabulü geçici olarak kapalıdır.")["gonderimKapali"])
+        # DergiPark ana sayfasından (kısaltılmış, gerçek metin)
+        gercek = (f"ISSN: 2146-1759 Yayın Modeli: Süreli Yayın (Ocak - Mayıs - Eylül) Makale Gönder "
+                  f"Makale Gönderimine Kapalı 30.09.2026 17:03 Gönderime Kapandı 30.09.2026 17:03 Hakkında "
+                  f"Dergimizde yaşanan yoğunluktan dolayı makale kabulü 31 Ocak {yil + 1}'ye kadar kapalı olacaktır.")
+        self.assertEqual(tr.anasayfa_coz(gercek), {"yillikSayi": 3, "gonderimKapali": True,
+                                                   "gonderimAcilis": f"{yil + 1}-01-31"})
+        self.assertEqual(tr.anasayfa_coz("Makale Gönderimine Açık. Gönderime Kapandı 01.01.2026"), {})
+        self.assertEqual(tr.anasayfa_coz("Dergimiz yılda üç kez yayımlanır.")["yillikSayi"], 3)
         self.assertEqual(tr.anasayfa_coz("Kuruluş 1998. Hakemli dergi."), {})
 
     def test_duzeltmeler(self):
@@ -140,21 +152,19 @@ class UcuncuUc(unittest.TestCase):
         dp = "https://dergipark.org.tr/tr/pub/ornek"
         yanitlar = {
             "trdizin": json.dumps({"hits": {"total": {"value": 1}, "hits": [
-                {"_id": "7", "_source": {"name": "Örnek Dergi", "issn": "1234-5678", "period": "Yılda 3 Sayı"}}]}}),
-            "/tr/search": f'<a href="{dp}">Örnek</a>',
+                {"_id": "7", "_source": {"name": "Örnek Dergi", "issn": "1234-5678", "period": "Yılda 3 Sayı",
+                                         "webAddress": "https://ornek.edu.tr/"}}]}}),
+            "https://ornek.edu.tr/": f'<a href="{dp}">DergiPark</a>',
             f"{dp}/archive": f'<a href="{dp}/issue/20">',
             f"{dp}/issue/20": f'<a href="{dp}/issue/20/300">',
             f"{dp}/issue/20/300": "Gönderilme Tarihi 01.01.2026 Kabul Tarihi 01.03.2026 Yayımlanma Tarihi 01.04.2026 "
                                   "Makale Türü Araştırma Makalesi",
-            dp: "<p>ISSN: 1234-5678</p>",
-            f"{dp}/announcement": "Dergimiz 2030 yılına kadar doludur.",
+            dp: "<p>ISSN: 1234-5678</p><p>Dergimiz 2030 yılına kadar doludur.</p>",
         }
 
         def getir(url):
             if "trdizin.gov.tr" in url:
                 return yanitlar["trdizin"] if "page=1&" in url else json.dumps({"hits": {"hits": []}})
-            if "/tr/search" in url:
-                return yanitlar["/tr/search"]
             return yanitlar.get(url, "")
 
         with tempfile.TemporaryDirectory() as k, \

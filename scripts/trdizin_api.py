@@ -43,8 +43,11 @@ DIL_ESLEME = {"türkçe": "tr", "turkish": "tr", "ingilizce": "en", "english": "
               "german": "de", "fransızca": "fr", "french": "fr", "arapça": "ar", "arabic": "ar",
               "rusça": "ru", "russian": "ru"}
 
+SAYI_KELIMELERI = {"bir": 1, "iki": 2, "üç": 3, "dört": 4, "beş": 5, "altı": 6, "on iki": 12}
+
 PERIYOT = [
     (r"yılda\s*(\d+)", lambda m: int(m[1])),
+    (r"yılda\s*(bir|iki|üç|dört|beş|altı|on iki)\s*(?:kez|defa|sayı)", lambda m: SAYI_KELIMELERI[m[1]]),
     (r"(\d+)\s*(?:issues?|sayı)\s*(?:per|a|/|bir)?\s*(?:year|yıl)", lambda m: int(m[1])),
     (r"(\d+)\s*ayda\s*bir", lambda m: max(1, round(12 / int(m[1])))),
     (r"iki aylık|bimonthly|bi-monthly", lambda m: 6),

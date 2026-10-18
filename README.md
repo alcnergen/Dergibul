@@ -30,11 +30,11 @@ python3 scripts/trdizin_guncelle.py --max-dergi 100
 Bu komut elle giriş gerektirmeden şu adımları izler:
 
 1. **Liste:** Dizindeki tüm dergileri `search.trdizin.gov.tr` sitesinin herkese açık JSON API'sinden sayfa sayfa çeker. Dizinden çıkarılmış ya da pasif görünen dergileri atlar. Gelen dergi sayısı beklenenden çok azsa (API kesintisi gibi) mevcut listeyi silmez, durur.
-2. **DergiPark adresi:** Önce TR Dizin kaydındaki adrese bakar. Adres yoksa DergiPark'ta ISSN ile, o da sonuç vermezse dergi adıyla arar.
-3. **Sıklık ve doluluk:** DergiPark ana sayfasından ve duyurulardan şunları okur:
-   - yayın sıklığı
+2. **DergiPark adresi:** TR Dizin kaydındaki adres kullanılır (`dergipark.org.tr/slug` kısa biçimleri de çözülür). Kayıt derginin kendi sitesini gösteriyorsa o sitedeki DergiPark bağlantısı aranır.
+3. **Sıklık, doluluk ve gönderim durumu:** DergiPark ana sayfasından şunları okur:
+   - yayın ayları ("Yayın Modeli: Süreli Yayın (Ocak - Mayıs - Eylül)" → yılda 3 sayı)
+   - "Makale Gönderimine Açık/Kapalı" durumu ve "makale kabulü 31 Ocak 2027'ye kadar kapalı" gibi açılış tarihleri. Açılış tarihi biliniyorsa tahmin o tarihten başlatılır, bilinmiyorsa dergi "şu an kapalı" olarak işaretlenir.
    - "… yılına kadar dolu" / "… yılı sayıları dolmuştur" duyuruları (`ilkBosSayi`, kaynak: *dergi duyurusu*)
-   - "makale kabulü kapalı" duyuruları
 4. **Süreler:** Son 4 sayıdan, her sayıda 6 makale inceler. Makale sayfalarındaki **Gönderilme / Kabul / Yayımlanma** tarihlerinden ortalama süreleri hesaplar. Sıklık başka yerden bulunamazsa sayıların yayın aralıklarından tahmin eder. Kabul edilen çalışma türlerini de bu makalelerin türlerinden çıkarır.
 
 Her çalıştırmada en uzun süredir ölçülmemiş dergiler önce ele alınır, diğerlerinin önceki ölçümleri korunur. Böylece yaklaşık 2.000 dergilik liste birkaç haftalık otomatik çalıştırmayla dolar ve sitelere fazla yük binmez.

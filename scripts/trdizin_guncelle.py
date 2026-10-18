@@ -21,11 +21,10 @@ import statistics
 import sys
 from datetime import date
 from pathlib import Path
-from urllib.parse import urlencode
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ortak import (Getirici, csv_oku, etiketli_tarih, html_metin, issn_normal, json_oku,  # noqa: E402
-                   json_yaz, kucuk, liste, sayi)
+                   json_yaz, kucuk, liste, sayi, tarih_bul)
 from trdizin_api import kayit_normallestir, periyot_coz, tum_dergiler  # noqa: E402
 
 KOK = Path(__file__).resolve().parent.parent
@@ -84,8 +83,10 @@ def makale_baglantilari(html, kok):
 
 
 def makale_tur(metin):
-    m = re.search(r"(Makale Türü|Türü|Article Type|Type)\s*:?\s*(.{0,60})", metin, re.IGNORECASE)
-    parca = (m.group(2) if m else "").lower()
+    # DergiPark makale sayfası: "... Bölüm Araştırma Makalesi Yazarlar ..."
+    m = (re.search(r"\bBölüm\s+(.{0,40}?)\s+(?:Yazarlar|Authors)\b", metin)
+         or re.search(r"(?:Makale Türü|Article Type|Section)\s*:?\s*(.{0,60})", metin, re.IGNORECASE))
+    parca = kucuk(m.group(1) if m else "")
     for desen, tur in TUR_ESLEME:
         if re.search(desen, parca):
             return tur
@@ -149,20 +150,14 @@ def dergi_olc(getirici, kok, sayi_adedi, makale_adedi):
 
 
 def dergipark_bul(getirici, satir):
-    """ISSN (yoksa ad) ile DergiPark'ta arar. Aday derginin sayfasında ISSN ya da ad geçiyorsa kabul eder."""
-    imzalar = [x for x in (satir.get("issn"), satir.get("eissn")) if x]
-    ad = kucuk(satir.get("ad")).strip()
-    for sorgu in imzalar + ([satir.get("ad")] if ad else []):
-        html = getirici.getir("https://dergipark.org.tr/tr/search?" + urlencode({"q": sorgu, "section": "journal"}))
-        adaylar = []
-        for m in re.finditer(r"(?:dergipark\.org\.tr|[\"'])/(?:tr|en)/pub/([\w-]+)", html or ""):
-            kok = dergipark_kok(m.group(1))
-            if kok and kok not in adaylar:
-                adaylar.append(kok)
-        for kok in adaylar[:3]:
-            metin = kucuk(html_metin(getirici.getir(kok) or ""))
-            if any(i in metin for i in imzalar) or (ad and ad in metin):
-                return kok
+    """Derginin kendi sitesinde DergiPark bağlantısı arar (DergiPark araması sunucu tarafında sonuç vermiyor)."""
+    url = (satir.get("url") or "").strip()
+    if not url.startswith("http") or "dergipark.org.tr" in url:
+        return None
+    for m in re.finditer(r"dergipark\.org\.tr/(?:(?:tr|en)/)?(?:pub/)?[\w-]+", getirici.getir(url) or ""):
+        kok = dergipark_kok(m.group(0))
+        if kok:
+            return kok
     return None
 
 
@@ -178,13 +173,25 @@ GONDERIM_KAPALI = re.compile(r"makale (?:kabul(?:ü)?|gönderim(?:i)?)[^.]{0,40}
                              r"kabul (?:edilme|etme)mekte)|not accepting (?:new )?(?:submissions|manuscripts)", re.I)
 
 
+AY_ADLARI = ("ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz", "ağustos", "eylül", "ekim",
+             "kasım", "aralık")
+
+
 def anasayfa_coz(html):
-    """DergiPark ana sayfa/duyuru metninden yıllık sayı, ilk boş sayı ve gönderim durumu çıkarır."""
+    """DergiPark ana sayfasından yıllık sayı, ilk boş sayı ve gönderim durumu çıkarır."""
     metin = html_metin(html)
     sonuc = {}
-    m = re.search(r"(?:Yayın Aralığı|Yayın Sıklığı|Periyot|Frequency)\s*:?\s*(.{0,40})", metin, re.I)
-    if m and periyot_coz(m.group(1)):
-        sonuc["yillikSayi"] = periyot_coz(m.group(1))
+    # "Yayın Modeli: Süreli Yayın (Ocak - Mayıs - Eylül)" -> 3
+    m = re.search(r"Yayın Modeli\s*:?[^()]{0,40}\(([^)]{3,150})\)", metin)
+    aylar = {a for a in AY_ADLARI if m and a in kucuk(m.group(1))}
+    if aylar:
+        sonuc["yillikSayi"] = len(aylar)
+    else:
+        m = re.search(r"(?:Yayın Aralığı|Yayın Sıklığı|Periyot|Frequency)\s*:?\s*(.{0,40})|(yılda\s+\S+\s+(?:kez|sayı))",
+                      metin, re.I)
+        n = m and periyot_coz(m.group(1) or m.group(2))
+        if n:
+            sonuc["yillikSayi"] = n
     yillar = []
     for desen, ek in DOLULUK_DESENLERI:
         for e in desen.finditer(metin):
@@ -194,8 +201,14 @@ def anasayfa_coz(html):
     if yillar:
         sonuc["ilkBosSayi"] = str(max(yillar))
         sonuc["ilkBosSayiKaynak"] = "dergi duyurusu"
-    if GONDERIM_KAPALI.search(metin):
+    durum = re.search(r"Makale Gönderimine (Açık|Kapalı)", metin)
+    if (durum and durum.group(1) == "Kapalı") or (not durum and GONDERIM_KAPALI.search(metin)):
         sonuc["gonderimKapali"] = True
+        # "makale kabulü 31 Ocak 2027'ye kadar kapalı olacaktır"
+        for k in re.finditer(r"kadar[^.]{0,30}?kapal", metin):
+            t = tarih_bul(metin[max(0, k.start() - 40): k.start()])
+            if t and t > date.today():
+                sonuc["gonderimAcilis"] = t.isoformat()
     return sonuc
 
 
@@ -241,6 +254,8 @@ def olcumu_uygula(dergi, olcum):
         dergi["ilkBosSayiKaynak"] = olcum.get("ilkBosSayiKaynak")
     if olcum.get("gonderimKapali"):
         dergi["gonderimKapali"] = True
+        if olcum.get("gonderimAcilis"):
+            dergi["gonderimAcilis"] = olcum["gonderimAcilis"]
     dergi["dogrulandi"] = bool(olcum.get("olcumMakaleSayisi"))
 
 
@@ -338,21 +353,21 @@ def main():
         print(f"[{i}/{len(sira)}] {d['ad']}")
         # Duyurudan gelen bilgiler her ölçümde yeniden okunur; eskisi kalmasın
         d.pop("gonderimKapali", None)
+        d.pop("gonderimAcilis", None)
         if d.get("ilkBosSayiKaynak") == "dergi duyurusu":
             d["ilkBosSayi"] = None
             del d["ilkBosSayiKaynak"]
         if not d["dergipark"]:
             d["dergipark"] = dergipark_bul(getirici, d)
             if not d["dergipark"]:
-                print("  DergiPark'ta bulunamadı")
+                print("  DergiPark adresi bulunamadı")
                 d["olcumTarihi"] = bugun  # sıranın sonuna at, sonraki turda tekrar denenir
                 continue
             d["url"] = d["url"] or d["dergipark"]
         olcum = dergi_olc(getirici, d["dergipark"], args.sayi, args.makale) or {}
-        for sayfa in ("", "/announcement"):
-            html = getirici.getir(d["dergipark"] + sayfa)
-            if html:
-                olcum |= {k: v for k, v in anasayfa_coz(html).items() if k not in olcum}
+        html = getirici.getir(d["dergipark"])
+        if html:
+            olcum |= {k: v for k, v in anasayfa_coz(html).items() if k not in olcum}
         olcum["olcumTarihi"] = bugun
         olcumu_uygula(d, olcum)
 

@@ -55,10 +55,16 @@
    * Bugün gönderilen bir çalışmanın en erken tahmini yayın tarihi.
    * İki sınırdan büyük olanı alınır: (1) ortalama süreler, (2) derginin ilan ettiği ilk boş sayı.
    */
+  // Gönderim geçici olarak kapalıysa ve açılış tarihi duyurulduysa, saat o tarihte başlar
+  function gonderimBaslangici(dergi, bugun) {
+    const acilis = dergi.gonderimAcilis ? new Date(dergi.gonderimAcilis) : null;
+    return acilis && !isNaN(acilis) && acilis > bugun ? acilis : bugun;
+  }
+
   function tahminiYayinTarihi(dergi, bugun) {
     bugun = bugun || new Date();
     const toplam = ortalamaToplamGun(dergi);
-    const sureyeGore = toplam ? gunEkle(bugun, toplam) : null;
+    const sureyeGore = toplam ? gunEkle(gonderimBaslangici(dergi, bugun), toplam) : null;
     const bosSayi = ayAyristir(dergi.ilkBosSayi);
     if (sureyeGore && bosSayi) return sureyeGore > bosSayi ? sureyeGore : bosSayi;
     return sureyeGore || bosSayi;
@@ -104,7 +110,11 @@
     if (calisma.etikKurul === false && dergi.etikKurulZorunlu) {
       uyarilar.push("Etik kurul izni isteniyor");
     }
-    if (dergi.gonderimKapali) engeller.push("Makale gönderimi kapalı");
+    if (dergi.gonderimKapali) {
+      const acilis = gonderimBaslangici(dergi, bugun);
+      if (acilis > bugun) uyarilar.push("Gönderim " + acilis.toLocaleDateString("tr-TR") + " tarihinde açılıyor");
+      else engeller.push("Makale gönderimine şu an kapalı");
+    }
     if (doluMu(dergi)) {
       engeller.push("İlk boş sayı " + dergi.ilkBosSayi + " (" + DOLULUK_SINIR_YILI + "+ dolu)");
     }

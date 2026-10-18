@@ -35,10 +35,14 @@ test("dil, ücret, kelime ve hedef tarih engelleri", () => {
   assert.equal(r.engeller.length, 4);
 });
 
-test("gönderimi kapalı dergi uygun değil", () => {
+test("gönderime kapalı dergi: açılış tarihi yoksa engel, varsa tahmin ötelenir", () => {
   const r = M.uygunlukDegerlendir(d({ gonderimKapali: true }), {}, bugun);
   assert.equal(r.uygun, false);
   assert.match(r.engeller[0], /kapalı/);
+  const r2 = M.uygunlukDegerlendir(d({ gonderimKapali: true, gonderimAcilis: "2027-01-31" }), {}, bugun);
+  assert.equal(r2.uygun, true);
+  assert.match(r2.uyarilar[0], /açılıyor/);
+  assert.equal(r2.tahminiTarih.getMonth(), 6); // 31 Ocak + 160 gün -> Temmuz 2027
 });
 
 test("TR Dizin listesi: 3-4 sayı, dolu gizli, tarihe göre sıralı", () => {

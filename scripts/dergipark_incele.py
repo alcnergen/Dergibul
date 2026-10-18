@@ -42,6 +42,10 @@ def main():
     baslik("ANA SAYFA metin (ilk 1500)")
     print(html_metin(g.getir(kok) or "")[:1500])
 
+    for yol in ("/rejection-statistics", "/statistics"):
+        baslik("İSTATİSTİK " + yol)
+        print(html_metin(g.getir(kok + yol) or "")[:2500])
+
     baslik("ARŞİV bağlantıları")
     arsiv = g.getir(f"{kok}/archive") or ""
     print("\n".join(baglantilar(arsiv)))
