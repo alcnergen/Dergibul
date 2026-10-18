@@ -11,6 +11,21 @@ Dergibul, akademik bir çalışma için **en yakın zamanda yayın imkânı olan
 
 > Depoyla gelen `data/*.json` dosyaları **kurgusal örnek veridir**. Sitede bu durum bir uyarı bandıyla gösterilir. Gerçek liste aşağıdaki adımlarla üretilir.
 
+## Parola koruması
+
+Depo herkese açık olduğu için veri düz JSON olarak tutulmaz. Depoda ve yayınlanan sitede yalnızca parolayla şifrelenmiş kopyalar (`data/*.enc.json`) bulunur; site açılışta parola sorar ve veriyi tarayıcıda çözer (PBKDF2-SHA256 + AES-256-GCM).
+
+Kurulum:
+
+1. **Settings → Secrets and variables → Actions → New repository secret**: adı `DERGIBUL_PAROLA`, değeri sitenin parolası (en az 8, tercihen 12+ karakter).
+2. **Actions → Veriyi şifrele → Run workflow**: mevcut veri şifrelenir, düz kopyalar depodan kaldırılır ve site yeniden yayınlanır.
+
+Parolayı değiştirmek için eski parolayı `ESKI_PAROLA`, yenisini `DERGIBUL_PAROLA` sırrına yazıp "Veriyi şifrele"yi çalıştırın; ardından `ESKI_PAROLA`'yı silin.
+
+Sınırlar: Kod herkese açık olduğu için ölçüm betikleri herkes tarafından çalıştırılabilir; parola, bu sitedeki derlenmiş veriye ve arayüze erişimi korur. Parolayı şifreli dosyaya karşı deneme yoluyla bulmak mümkün olduğundan kısa ya da tahmin edilebilir parola kullanmayın. Parola koymadan önce yapılmış commit'lerde düz veri git geçmişinde durmaya devam eder.
+
+Yerelde şifreli veriyle çalışmak için: `DERGIBUL_PAROLA=... python3 scripts/sifrele.py coz`.
+
 ## Çalıştırma
 
 ```bash
