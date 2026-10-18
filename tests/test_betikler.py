@@ -114,6 +114,17 @@ class TrDizinApi(unittest.TestCase):
         self.assertEqual(api.alanlari_bul(["Diş Hekimliği"]), ["Sağlık Bilimleri"])
         self.assertEqual(api.alanlari_bul([], ["SOCIAL"]), ["Sosyal Bilimler"])
         self.assertNotIn("Sosyal Bilimler", api.alanlari_bul(["Kalp ve Kalp Damar Sistemi", "Pediatri"]))
+        # Sitede bildirilen hatalar: tıp ve mühendislik dergileri Sosyal Bilimler'de çıkıyordu
+        self.assertEqual(api.alanlari_bul(["Tıbbi Etik", "Kardiyoloji"]), ["Sağlık Bilimleri"])
+        self.assertEqual(api.alanlari_bul(["Savunma Bilimleri"]), ["Mühendislik"])
+        self.assertEqual(api.alanlari_bul(["Etik"]), ["Sosyal Bilimler"])
+        # Veri tabanı üst sınır: fen/mühendislik veri tabanındaki dergiye sosyal konudan alan verilmez
+        cok_konulu = ["Mühendislik, Makine", "Kimya", "Tarih", "Bilgi, Belge Yönetimi"]
+        self.assertIn("Sosyal Bilimler", api.alanlari_bul(cok_konulu))
+        self.assertEqual(api.alanlari_bul(cok_konulu, ["SCIENCE"]), ["Fen Bilimleri", "Mühendislik"])
+        self.assertEqual(api.alanlari_bul(["Sağlık Politikaları ve Hizmetleri", "Sosyal Çalışma"], ["SOCIAL"]),
+                         ["Sosyal Bilimler"])
+        self.assertEqual(api.alanlari_bul(["Tiyatro"], ["HEALTH"]), ["Sağlık Bilimleri"])  # hiç uymazsa temel alan
 
     def test_periyot(self):
         for metin, n in [("Yılda 3 Sayı", 3), ("3 ayda bir", 4), ("Quarterly", 4), ("Altı Aylık", 2),
