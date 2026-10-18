@@ -94,9 +94,16 @@ def alanlari_bul(konular):
     return sorted({alan for desen, alan in ALAN_ESLEME if re.search(desen, metin)})
 
 
+def son_yil(kaynak):
+    """journalYear[] içinden en güncel yılın kaydı (konu ve sayı ayları burada tutulur)."""
+    yillar = [y for y in kaynak.get("journalYear") or [] if isinstance(y, dict) and y.get("year")]
+    return max(yillar, key=lambda y: y["year"]) if yillar else {}
+
+
 def kayit_normallestir(kaynak):
     """API'nin _source nesnesini, trdizin_guncelle.satirdan_dergi'nin beklediği satıra çevirir."""
     c = list(duzlestir(kaynak))
+    yil = son_yil(kaynak)
     ad = next((str(v) for v in _sec(c, r"^(name|title|journalname|journaltitle|ordertitle)$")), "")
     issn = next((issn_normal(str(v)) for v in _sec(c, r"(^|\.)(p|print)?issn$") if issn_normal(str(v))), "")
     eissn = next((issn_normal(str(v)) for v in _sec(c, r"(^|\.)(e|electronic|online)_?issn$") if issn_normal(str(v))), "")
@@ -104,10 +111,21 @@ def kayit_normallestir(kaynak):
     dergipark = next((a for a in adresler if "dergipark.org.tr" in a), "")
     url = next((a for a in adresler if "trdizin" not in a), "")
     yayinci = next((str(v) for v in _sec(c, r"publisher|yayinci|institution|kurum", r"id$|url|address")), "")
-    konular = [str(v) for v in _sec(c, r"subject|categor|konu|field|area|discipline", r"id$|code$")]
+    if yil.get("subjects"):
+        konular = [k["name"] for k in yil["subjects"] if isinstance(k, dict) and k.get("name")]
+    else:
+        konular = [str(v) for v in _sec(c, r"subject|categor|konu|field|area|discipline", r"id$|code$|label")
+                   if isinstance(v, str)]
     diller = sorted({DIL_ESLEME.get(kucuk(v).strip(), "") for v in _sec(c, r"lang|dil")} - {""})
-    periyot = next((p for p in (periyot_coz(v) for v in _sec(c, r"period|frequen|periyot|siklik")) if p), None)
-    durumlar = [str(v) for v in _sec(c, r"status|state|durum|active|isindex")]
+    # TR Dizin "periods" alanı sayıların çıktığı ayları tutar: ["6", "12"] -> yılda 2 sayı
+    aylar = {str(a) for a in yil.get("periods") or [] if str(a).isdigit() and 1 <= int(a) <= 12}
+    periyot = len(aylar) or next(
+        (p for p in (periyot_coz(v) for v in _sec(c, r"period(?!s)|frequen|periyot|siklik")) if p), None)
+    if isinstance(kaynak.get("isActive"), bool):
+        aktif = kaynak["isActive"]
+    else:
+        durumlar = [str(v) for v in _sec(c, r"status|state|durum|active|isindex")]
+        aktif = not any(OLUMSUZ_DURUM.search(kucuk(d)) for d in durumlar)
     return {
         "trdizinId": str(kaynak.get("id") or ""),
         "ad": ad.strip(),
@@ -120,7 +138,8 @@ def kayit_normallestir(kaynak):
         "konular": "|".join(dict.fromkeys(konular)),
         "diller": "|".join(diller),
         "yillikSayi": str(periyot or ""),
-        "aktif": not any(OLUMSUZ_DURUM.search(kucuk(d)) for d in durumlar),
+        "sonYil": yil.get("year"),
+        "aktif": aktif,
     }
 
 

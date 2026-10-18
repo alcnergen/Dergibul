@@ -21,6 +21,9 @@ jobs:
           python-version: "3.12"
       - name: TR Dizin ilk kayıt
         run: python3 scripts/trdizin_api.py --incele
+      - name: DergiPark sayfa yapısı
+        run: python3 scripts/dergipark_incele.py tybakademi --issn 2146-1759
+
       - name: 3 dergiyle uçtan uca ölçüm
         run: |
           python3 scripts/trdizin_guncelle.py --max-dergi 3 --cikti /tmp/kontrol.json

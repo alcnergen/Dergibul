@@ -33,6 +33,9 @@ class DergiPark(unittest.TestCase):
     def test_kok(self):
         self.assertEqual(tr.dergipark_kok("https://dergipark.org.tr/en/pub/ornek/archive"), KOK)
         self.assertEqual(tr.dergipark_kok("ornek"), KOK)
+        self.assertEqual(tr.dergipark_kok("https://dergipark.org.tr/iuaded"), "https://dergipark.org.tr/tr/pub/iuaded")
+        self.assertIsNone(tr.dergipark_kok("https://dergipark.org.tr/tr/pub/page"))
+        self.assertIsNone(tr.dergipark_kok("https://ornek.edu.tr/dergi"))
 
     def test_baglantilar(self):
         arsiv = f'<a href="{KOK}/issue/10">x</a><a href="/tr/pub/ornek/issue/12">y</a><a href="{KOK}/issue/10">'
@@ -76,6 +79,26 @@ class TrDizinApi(unittest.TestCase):
         self.assertEqual(s["alanlar"], "Eğitim Bilimleri|Sosyal Bilimler")
         self.assertEqual((s["diller"], s["yillikSayi"], s["aktif"]), ("en|tr", "4", True))
         self.assertFalse(api.kayit_normallestir(self.KAYIT | {"status": "Dizinden çıkarıldı"})["aktif"])
+
+    def test_gercek_kayit(self):
+        # search.trdizin.gov.tr'den alınmış kaydın (kısaltılmış) yapısı
+        kayit = {
+            "id": 999, "title": "Beykoz Akademi Dergisi", "issn": None, "eissn": "2651-5393", "isActive": True,
+            "webAddress": "http://dergipark.org.tr/makusobed", "journalDatabase": ["SOCIAL"],
+            "journalYear": [
+                {"year": 2023, "periods": ["6"], "subjects": [{"autoLabel": False, "name": "Tarih", "rootName": "Sosyal"}]},
+                {"year": 2024, "periods": ["6", "12"], "subjects": [
+                    {"autoLabel": False, "fullName": "Sosyal > Sosyal > Coğrafya", "name": "Coğrafya", "rootName": "Sosyal"},
+                    {"autoLabel": False, "name": "Eğitim, Özel", "rootName": "Sosyal"}]},
+            ],
+        }
+        s = api.kayit_normallestir(kayit)
+        self.assertEqual((s["ad"], s["issn"], s["eissn"]), ("Beykoz Akademi Dergisi", "", "2651-5393"))
+        self.assertEqual((s["yillikSayi"], s["sonYil"], s["aktif"]), ("2", 2024, True))
+        self.assertEqual(s["konular"], "Coğrafya|Eğitim, Özel")
+        self.assertEqual(s["alanlar"], "Eğitim Bilimleri|Sosyal Bilimler")
+        self.assertFalse(api.kayit_normallestir(kayit | {"isActive": False})["aktif"])
+        self.assertEqual(tr.dergipark_kok(s["dergipark"]), "https://dergipark.org.tr/tr/pub/makusobed")
 
     def test_periyot(self):
         for metin, n in [("Yılda 3 Sayı", 3), ("3 ayda bir", 4), ("Quarterly", 4), ("Altı Aylık", 2),
@@ -123,6 +146,7 @@ class UcuncuUc(unittest.TestCase):
             f"{dp}/issue/20": f'<a href="{dp}/issue/20/300">',
             f"{dp}/issue/20/300": "Gönderilme Tarihi 01.01.2026 Kabul Tarihi 01.03.2026 Yayımlanma Tarihi 01.04.2026 "
                                   "Makale Türü Araştırma Makalesi",
+            dp: "<p>ISSN: 1234-5678</p>",
             f"{dp}/announcement": "Dergimiz 2030 yılına kadar doludur.",
         }
 

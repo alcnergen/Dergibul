@@ -25,7 +25,7 @@ from urllib.parse import urlencode
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ortak import (Getirici, csv_oku, etiketli_tarih, html_metin, issn_normal, json_oku,  # noqa: E402
-                   json_yaz, liste, sayi)
+                   json_yaz, kucuk, liste, sayi)
 from trdizin_api import kayit_normallestir, periyot_coz, tum_dergiler  # noqa: E402
 
 KOK = Path(__file__).resolve().parent.parent
@@ -43,14 +43,25 @@ TUR_ESLEME = [
 ]
 
 
+# DergiPark'ta dergi kısa adı olamayacak genel yollar
+AYRILMIS_YOLLAR = {"tr", "en", "pub", "page", "search", "journal", "journals", "login", "register",
+                   "help", "about", "static", "public", "user", "article", "issue", "archive"}
+
+
 def dergipark_kok(deger):
     """'slug', 'https://dergipark.org.tr/tr/pub/slug/...' -> 'https://dergipark.org.tr/tr/pub/slug'."""
     deger = (deger or "").strip()
     if not deger:
         return None
-    m = re.search(r"dergipark\.org\.tr/(?:tr|en)/pub/([\w-]+)", deger)
-    slug = m.group(1) if m else re.sub(r"[^\w-]", "", deger)
-    return f"https://dergipark.org.tr/tr/pub/{slug}" if slug else None
+    if "dergipark.org.tr" in deger:
+        # Hem /tr/pub/slug hem de kısa dergipark.org.tr/slug biçimleri
+        m = re.search(r"dergipark\.org\.tr/(?:(?:tr|en)/)?(?:pub/)?([\w-]+)", deger)
+        slug = m.group(1) if m else None
+    else:
+        slug = deger if re.fullmatch(r"[\w-]+", deger) else None
+    if not slug or slug.lower() in AYRILMIS_YOLLAR:
+        return None
+    return f"https://dergipark.org.tr/tr/pub/{slug}"
 
 
 def sayi_baglantilari(html, kok):
@@ -138,14 +149,20 @@ def dergi_olc(getirici, kok, sayi_adedi, makale_adedi):
 
 
 def dergipark_bul(getirici, satir):
-    """ISSN (yoksa ad) ile DergiPark'ta arar; ilk dergi bağlantısının kökünü döndürür."""
-    for sorgu in (satir.get("issn"), satir.get("eissn"), satir.get("ad")):
-        if not sorgu:
-            continue
+    """ISSN (yoksa ad) ile DergiPark'ta arar. Aday derginin sayfasında ISSN ya da ad geçiyorsa kabul eder."""
+    imzalar = [x for x in (satir.get("issn"), satir.get("eissn")) if x]
+    ad = kucuk(satir.get("ad")).strip()
+    for sorgu in imzalar + ([satir.get("ad")] if ad else []):
         html = getirici.getir("https://dergipark.org.tr/tr/search?" + urlencode({"q": sorgu, "section": "journal"}))
-        m = re.search(r"dergipark\.org\.tr/(?:tr|en)/pub/([\w-]+)|[\"']/(?:tr|en)/pub/([\w-]+)", html or "")
-        if m:
-            return dergipark_kok(m.group(1) or m.group(2))
+        adaylar = []
+        for m in re.finditer(r"(?:dergipark\.org\.tr|[\"'])/(?:tr|en)/pub/([\w-]+)", html or ""):
+            kok = dergipark_kok(m.group(1))
+            if kok and kok not in adaylar:
+                adaylar.append(kok)
+        for kok in adaylar[:3]:
+            metin = kucuk(html_metin(getirici.getir(kok) or ""))
+            if any(i in metin for i in imzalar) or (ad and ad in metin):
+                return kok
     return None
 
 
