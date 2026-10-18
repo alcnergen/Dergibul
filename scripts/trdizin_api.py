@@ -119,7 +119,7 @@ def alanlari_bul(konular, veritabanlari=()):
         k = kucuk(konu).strip()
         alanlar |= {alan for desen, alan in ALAN_ESLEME if re.search(desen, k)}
     for vt in veritabanlari:
-        v = kucuk(vt)
+        v = str(vt).lower()  # veri tabanı kodları İngilizce (SOCIAL); Türkçe küçük harf "ı" üretmesin
         alanlar |= {alan for desen, alan in VERITABANI_ESLEME if re.search(desen, v)}
     return sorted(alanlar)
 
