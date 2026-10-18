@@ -1,0 +1,332 @@
+{
+ "meta": {
+  "ornek": true,
+  "guncelleme": "2026-10-18",
+  "kaynak": "Örnek veri",
+  "aciklama": "Bu kayıtlar kurgusaldır ve gerçek dergileri temsil etmez. Gerçek veri için scripts/ altındaki güncelleme betiklerini çalıştırın."
+ },
+ "dergiler": [
+  {
+   "id": "ornek-ul-1",
+   "ad": "Example Journal of Educational Research",
+   "issn": "9999-0001",
+   "yayinci": "Örnek Yayınevi",
+   "url": "",
+   "alanlar": [
+    "Eğitim Bilimleri"
+   ],
+   "diller": [
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "sistematik"
+   ],
+   "yillikSayi": null,
+   "ortIlkKararGun": 35,
+   "ortToplamGun": 240,
+   "olcumMakaleSayisi": null,
+   "ilkBosSayi": null,
+   "apc": 0,
+   "apcBirim": "USD",
+   "endeksler": [
+    "SSCI"
+   ],
+   "ulke": "Birleşik Krallık",
+   "ceyrek": "Q1",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-ul-2",
+   "ad": "Example Review of Social Policy",
+   "issn": "9999-0002",
+   "yayinci": "Örnek Yayınevi",
+   "url": "",
+   "alanlar": [
+    "Sosyal Bilimler"
+   ],
+   "diller": [
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "sistematik"
+   ],
+   "yillikSayi": null,
+   "ortIlkKararGun": 50,
+   "ortToplamGun": 300,
+   "olcumMakaleSayisi": null,
+   "ilkBosSayi": null,
+   "apc": 0,
+   "apcBirim": "USD",
+   "endeksler": [
+    "SSCI"
+   ],
+   "ulke": "ABD",
+   "ceyrek": "Q2",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-ul-3",
+   "ad": "Example Health Sciences Letters",
+   "issn": "9999-0003",
+   "yayinci": "Örnek Yayınevi",
+   "url": "",
+   "alanlar": [
+    "Sağlık Bilimleri"
+   ],
+   "diller": [
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "sistematik"
+   ],
+   "yillikSayi": null,
+   "ortIlkKararGun": 21,
+   "ortToplamGun": 150,
+   "olcumMakaleSayisi": null,
+   "ilkBosSayi": null,
+   "apc": 2500,
+   "apcBirim": "USD",
+   "endeksler": [
+    "SCIE"
+   ],
+   "ulke": "Hollanda",
+   "ceyrek": "Q1",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-ul-4",
+   "ad": "Example Management Quarterly",
+   "issn": "9999-0004",
+   "yayinci": "Örnek Yayınevi",
+   "url": "",
+   "alanlar": [
+    "İktisadi ve İdari Bilimler"
+   ],
+   "diller": [
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "sistematik"
+   ],
+   "yillikSayi": null,
+   "ortIlkKararGun": 60,
+   "ortToplamGun": 330,
+   "olcumMakaleSayisi": null,
+   "ilkBosSayi": null,
+   "apc": 0,
+   "apcBirim": "USD",
+   "endeksler": [
+    "SSCI"
+   ],
+   "ulke": "ABD",
+   "ceyrek": "Q3",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-ul-5",
+   "ad": "Example Emerging Education Journal",
+   "issn": "9999-0005",
+   "yayinci": "Örnek Yayınevi",
+   "url": "",
+   "alanlar": [
+    "Eğitim Bilimleri"
+   ],
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "sistematik"
+   ],
+   "yillikSayi": null,
+   "ortIlkKararGun": 30,
+   "ortToplamGun": 180,
+   "olcumMakaleSayisi": null,
+   "ilkBosSayi": null,
+   "apc": 0,
+   "apcBirim": "USD",
+   "endeksler": [
+    "ESCI"
+   ],
+   "ulke": "Türkiye",
+   "ceyrek": "Q4",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-ul-6",
+   "ad": "Example Journal of Sport Studies",
+   "issn": "9999-0006",
+   "yayinci": "Örnek Yayınevi",
+   "url": "",
+   "alanlar": [
+    "Spor Bilimleri"
+   ],
+   "diller": [
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "sistematik"
+   ],
+   "yillikSayi": null,
+   "ortIlkKararGun": 28,
+   "ortToplamGun": 160,
+   "olcumMakaleSayisi": null,
+   "ilkBosSayi": null,
+   "apc": 300,
+   "apcBirim": "USD",
+   "endeksler": [
+    "ESCI"
+   ],
+   "ulke": "Polonya",
+   "ceyrek": "Q2",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-ul-7",
+   "ad": "Example Language and Literature Review",
+   "issn": "9999-0007",
+   "yayinci": "Örnek Yayınevi",
+   "url": "",
+   "alanlar": [
+    "Dil ve Edebiyat"
+   ],
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "kitap"
+   ],
+   "yillikSayi": null,
+   "ortIlkKararGun": 40,
+   "ortToplamGun": 200,
+   "olcumMakaleSayisi": null,
+   "ilkBosSayi": null,
+   "apc": 0,
+   "apcBirim": "USD",
+   "endeksler": [
+    "ESCI"
+   ],
+   "ulke": "Türkiye",
+   "ceyrek": null,
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-ul-8",
+   "ad": "Example Psychology Reports",
+   "issn": "9999-0008",
+   "yayinci": "Örnek Yayınevi",
+   "url": "",
+   "alanlar": [
+    "Psikoloji"
+   ],
+   "diller": [
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "sistematik"
+   ],
+   "yillikSayi": null,
+   "ortIlkKararGun": 45,
+   "ortToplamGun": 270,
+   "olcumMakaleSayisi": null,
+   "ilkBosSayi": null,
+   "apc": 3000,
+   "apcBirim": "USD",
+   "endeksler": [
+    "SSCI"
+   ],
+   "ulke": "Almanya",
+   "ceyrek": "Q1",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-ul-9",
+   "ad": "Example Engineering Methods",
+   "issn": "9999-0009",
+   "yayinci": "Örnek Yayınevi",
+   "url": "",
+   "alanlar": [
+    "Mühendislik"
+   ],
+   "diller": [
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "sistematik"
+   ],
+   "yillikSayi": null,
+   "ortIlkKararGun": 18,
+   "ortToplamGun": 120,
+   "olcumMakaleSayisi": null,
+   "ilkBosSayi": null,
+   "apc": 2200,
+   "apcBirim": "USD",
+   "endeksler": [
+    "SCIE"
+   ],
+   "ulke": "İsviçre",
+   "ceyrek": "Q2",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-ul-10",
+   "ad": "Example Theology Studies",
+   "issn": "9999-0010",
+   "yayinci": "Örnek Yayınevi",
+   "url": "",
+   "alanlar": [
+    "İlahiyat"
+   ],
+   "diller": [
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "sistematik"
+   ],
+   "yillikSayi": null,
+   "ortIlkKararGun": 55,
+   "ortToplamGun": 280,
+   "olcumMakaleSayisi": null,
+   "ilkBosSayi": null,
+   "apc": 0,
+   "apcBirim": "USD",
+   "endeksler": [
+    "ESCI",
+    "AHCI"
+   ],
+   "ulke": "Birleşik Krallık",
+   "ceyrek": "Q2",
+   "dogrulandi": false,
+   "ornek": true
+  }
+ ]
+}

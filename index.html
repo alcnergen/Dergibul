@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dergibul</title>
+  <meta name="description" content="TR Dizin, ESCI ve yurtdışı Q1/Q2/SSCI dergilerinde en yakın yayın imkânını bulun.">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="ust">
+    <div class="kap">
+      <h1>Dergibul</h1>
+      <p>Çalışmanıza uygun, en erken yayın imkânı olan dergileri bulun.</p>
+    </div>
+  </header>
+
+  <main class="kap">
+    <div id="ornek-uyari" class="uyari" hidden></div>
+
+    <section class="kart" aria-labelledby="calisma-baslik">
+      <h2 id="calisma-baslik">Çalışmanız</h2>
+      <form id="calisma" class="izgara">
+        <label>Çalışma tipi
+          <select name="tip" id="tip"><option value="">Fark etmez</option></select>
+        </label>
+        <label>Alan
+          <select name="alan" id="alan"><option value="">Tümü</option></select>
+        </label>
+        <label>Dil
+          <select name="dil">
+            <option value="">Fark etmez</option>
+            <option value="tr">Türkçe</option>
+            <option value="en">İngilizce</option>
+          </select>
+        </label>
+        <label>Kelime sayısı
+          <input name="kelime" type="number" min="0" step="100" placeholder="ör. 7000">
+        </label>
+        <label>En geç yayın tarihi
+          <input name="hedef" type="month">
+        </label>
+        <label class="onay"><input name="apcKabul" type="checkbox" checked> Yayın ücreti ödeyebilirim</label>
+        <label class="onay"><input name="etikKurul" type="checkbox" checked> Etik kurul iznim var</label>
+        <label class="onay"><input name="sadeceUygun" type="checkbox"> Yalnızca uygun dergiler</label>
+      </form>
+    </section>
+
+    <nav class="sekmeler" role="tablist">
+      <button role="tab" data-sekme="trdizin" aria-selected="true">TR Dizin</button>
+      <button role="tab" data-sekme="esci" aria-selected="false">ESCI</button>
+      <button role="tab" data-sekme="yurtdisi" aria-selected="false">Yurtdışı: Q1 · Q2 · SSCI</button>
+      <button role="tab" data-sekme="veri" aria-selected="false">Veri</button>
+    </nav>
+
+    <section id="trdizin" class="panel" role="tabpanel">
+      <div class="filtre">
+        <label>Yılda sayı
+          <select id="tr-frekans">
+            <option value="3-4" selected>3–4</option>
+            <option value="1-12">Tümü</option>
+            <option value="3-3">3</option>
+            <option value="4-4">4</option>
+          </select>
+        </label>
+        <label class="onay"><input id="tr-dolu" type="checkbox" checked> 2028 ve sonrasına dolu dergileri gizle</label>
+      </div>
+      <p class="ozet" id="tr-ozet"></p>
+      <div class="liste" id="tr-liste"></div>
+    </section>
+
+    <section id="esci" class="panel" role="tabpanel" hidden>
+      <div class="filtre">
+        <label class="onay"><input id="esci-tr" type="checkbox"> Yalnızca Türkiye kaynaklı</label>
+        <label class="onay"><input id="esci-apc" type="checkbox"> Yalnızca ücretsiz</label>
+      </div>
+      <p class="ozet" id="esci-ozet"></p>
+      <div class="liste" id="esci-liste"></div>
+    </section>
+
+    <section id="yurtdisi" class="panel" role="tabpanel" hidden>
+      <div class="filtre">
+        <label class="onay"><input id="yd-q1" type="checkbox" checked> Q1</label>
+        <label class="onay"><input id="yd-q2" type="checkbox" checked> Q2</label>
+        <label class="onay"><input id="yd-ssci" type="checkbox" checked> SSCI (çeyrekten bağımsız)</label>
+        <label class="onay"><input id="yd-sadece-ssci" type="checkbox"> Yalnızca SSCI</label>
+      </div>
+      <p class="ozet" id="yd-ozet"></p>
+      <div class="liste" id="yd-liste"></div>
+    </section>
+
+    <section id="veri" class="panel" role="tabpanel" hidden>
+      <div class="kart">
+        <h2>Veri durumu</h2>
+        <dl id="veri-durum" class="durum"></dl>
+        <h3>Kendi verinizi yükleyin</h3>
+        <p>Güncelleme betiklerinin ürettiği <code>trdizin.json</code> / <code>uluslararasi.json</code> dosyalarını ya da aynı sütunlara sahip bir CSV dosyasını seçin. Dosya yalnızca tarayıcınızda okunur.</p>
+        <div class="filtre">
+          <label>TR Dizin <input type="file" id="yukle-tr" accept=".json,.csv"></label>
+          <label>Uluslararası <input type="file" id="yukle-ul" accept=".json,.csv"></label>
+          <button type="button" id="sifirla">Varsayılan veriye dön</button>
+        </div>
+        <h3>Süreler nasıl hesaplanıyor?</h3>
+        <p>Tahmini yayın tarihi = bugün + ortalama (gönderim → kabul) + ortalama (kabul → yayın). Dergi ilk boş sayısını ilan ettiyse ikisinden geç olanı alınır. Ortalamalar, derginin son sayılarında yayımlanan makalelerin DergiPark'taki gönderim, kabul ve yayın tarihlerinden ölçülür. Ölçüm 10 makalenin altındaysa güvenilirlik düşük kabul edilir.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="kap alt">
+    Veriler bilgi amaçlıdır; başvurmadan önce derginin güncel yazım kurallarını ve dizin durumunu kendi sitesinden doğrulayın.
+  </footer>
+
+  <script src="assets/motor.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

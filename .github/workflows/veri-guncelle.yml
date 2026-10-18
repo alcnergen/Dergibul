@@ -1,0 +1,57 @@
+name: Veri güncelle
+
+on:
+  schedule:
+    - cron: "17 1 * * *"   # her gün 01:17 UTC; dergi başına ~45 sn, 150 dergi ~2 saat
+  workflow_dispatch:
+    inputs:
+      max_dergi:
+        description: "Bu çalıştırmada ölçülecek en fazla TR Dizin dergisi"
+        default: "150"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: veri-guncelle
+  cancel-in-progress: false
+
+jobs:
+  guncelle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Yurtdışı listesi (SJR + Web of Science dosyaları)
+        run: |
+          set -e
+          ARGS=""
+          if curl -fsSL -A "Mozilla/5.0" -o /tmp/scimagojr.csv "https://www.scimagojr.com/journalrank.php?out=xls" \
+             && head -1 /tmp/scimagojr.csv | grep -q "SJR Best Quartile"; then
+            ARGS="$ARGS --sjr /tmp/scimagojr.csv"
+          elif [ -f data/kaynak/scimagojr.csv ]; then
+            ARGS="$ARGS --sjr data/kaynak/scimagojr.csv"
+          fi
+          for e in ssci esci scie ahci jcr; do
+            if [ -f "data/kaynak/wos/$e.csv" ]; then ARGS="$ARGS --$e data/kaynak/wos/$e.csv"; fi
+          done
+          if [ -n "$ARGS" ]; then python3 scripts/uluslararasi_guncelle.py $ARGS; else echo "Kaynak yok, atlandı."; fi
+
+      - name: TR Dizin kayıt yapısını göster (eşleme kontrolü için)
+        continue-on-error: true
+        run: python3 scripts/trdizin_api.py --incele
+
+      - name: TR Dizin listesini çek ve DergiPark'tan ölç
+        run: python3 scripts/trdizin_guncelle.py --max-dergi "${{ github.event.inputs.max_dergi || '150' }}"
+
+      - name: Değişiklikleri kaydet
+        run: |
+          git config user.name "dergibul-bot"
+          git config user.email "dergibul-bot@users.noreply.github.com"
+          git add data/*.json
+          git diff --cached --quiet || git commit -m "Veri güncellemesi $(date -u +%F)"
+          git push

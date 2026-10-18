@@ -1,0 +1,441 @@
+{
+ "meta": {
+  "ornek": true,
+  "guncelleme": "2026-10-18",
+  "kaynak": "Örnek veri",
+  "aciklama": "Bu kayıtlar kurgusaldır ve gerçek dergileri temsil etmez. Gerçek veri için scripts/ altındaki güncelleme betiklerini çalıştırın."
+ },
+ "dergiler": [
+  {
+   "id": "ornek-tr-1",
+   "ad": "Örnek Eğitim Araştırmaları Dergisi",
+   "issn": "0000-0001",
+   "yayinci": "Örnek Üniversitesi",
+   "url": "",
+   "alanlar": [
+    "Eğitim Bilimleri"
+   ],
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "tez"
+   ],
+   "yillikSayi": 4,
+   "ortIlkKararGun": 30,
+   "ortKabulGun": 110,
+   "ortKabulYayinGun": 60,
+   "olcumMakaleSayisi": 40,
+   "ilkBosSayi": null,
+   "maxKelime": 8000,
+   "apc": 0,
+   "apcBirim": "TL",
+   "etikKurulZorunlu": true,
+   "endeksler": [
+    "TR Dizin"
+   ],
+   "ulke": "Türkiye",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-tr-2",
+   "ad": "Örnek Sosyal Bilimler Dergisi",
+   "issn": "0000-0002",
+   "yayinci": "Örnek Üniversitesi",
+   "url": "",
+   "alanlar": [
+    "Sosyal Bilimler",
+    "Dil ve Edebiyat"
+   ],
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "tez"
+   ],
+   "yillikSayi": 4,
+   "ortIlkKararGun": 25,
+   "ortKabulGun": 90,
+   "ortKabulYayinGun": 240,
+   "olcumMakaleSayisi": 40,
+   "ilkBosSayi": "2027-09",
+   "maxKelime": 8000,
+   "apc": 0,
+   "apcBirim": "TL",
+   "etikKurulZorunlu": true,
+   "endeksler": [
+    "TR Dizin"
+   ],
+   "ulke": "Türkiye",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-tr-3",
+   "ad": "Örnek Sağlık Bilimleri Dergisi",
+   "issn": "0000-0003",
+   "yayinci": "Örnek Üniversitesi",
+   "url": "",
+   "alanlar": [
+    "Sağlık Bilimleri"
+   ],
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "sistematik",
+    "olgu",
+    "kisa"
+   ],
+   "yillikSayi": 3,
+   "ortIlkKararGun": 40,
+   "ortKabulGun": 150,
+   "ortKabulYayinGun": 90,
+   "olcumMakaleSayisi": 40,
+   "ilkBosSayi": null,
+   "maxKelime": 8000,
+   "apc": 1500,
+   "apcBirim": "TL",
+   "etikKurulZorunlu": true,
+   "endeksler": [
+    "TR Dizin"
+   ],
+   "ulke": "Türkiye",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-tr-4",
+   "ad": "Örnek İktisadi ve İdari Bilimler Dergisi",
+   "issn": "0000-0004",
+   "yayinci": "Örnek Üniversitesi",
+   "url": "",
+   "alanlar": [
+    "İktisadi ve İdari Bilimler"
+   ],
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "tez"
+   ],
+   "yillikSayi": 4,
+   "ortIlkKararGun": 35,
+   "ortKabulGun": 120,
+   "ortKabulYayinGun": 700,
+   "olcumMakaleSayisi": 40,
+   "ilkBosSayi": "2028-06",
+   "maxKelime": 8000,
+   "apc": 0,
+   "apcBirim": "TL",
+   "etikKurulZorunlu": true,
+   "endeksler": [
+    "TR Dizin"
+   ],
+   "ulke": "Türkiye",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-tr-5",
+   "ad": "Örnek Mühendislik Bilimleri Dergisi",
+   "issn": "0000-0005",
+   "yayinci": "Örnek Üniversitesi",
+   "url": "",
+   "alanlar": [
+    "Mühendislik",
+    "Fen Bilimleri"
+   ],
+   "diller": [
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "kisa"
+   ],
+   "yillikSayi": 3,
+   "ortIlkKararGun": 20,
+   "ortKabulGun": 80,
+   "ortKabulYayinGun": 45,
+   "olcumMakaleSayisi": 40,
+   "ilkBosSayi": null,
+   "maxKelime": 8000,
+   "apc": 0,
+   "apcBirim": "TL",
+   "etikKurulZorunlu": false,
+   "endeksler": [
+    "TR Dizin"
+   ],
+   "ulke": "Türkiye",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-tr-6",
+   "ad": "Örnek Spor Bilimleri Dergisi",
+   "issn": "0000-0006",
+   "yayinci": "Örnek Üniversitesi",
+   "url": "",
+   "alanlar": [
+    "Spor Bilimleri",
+    "Sağlık Bilimleri"
+   ],
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "tez"
+   ],
+   "yillikSayi": 4,
+   "ortIlkKararGun": 30,
+   "ortKabulGun": 100,
+   "ortKabulYayinGun": 120,
+   "olcumMakaleSayisi": 40,
+   "ilkBosSayi": "2027-03",
+   "maxKelime": 8000,
+   "apc": 0,
+   "apcBirim": "TL",
+   "etikKurulZorunlu": true,
+   "endeksler": [
+    "TR Dizin"
+   ],
+   "ulke": "Türkiye",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-tr-7",
+   "ad": "Örnek İlahiyat Dergisi",
+   "issn": "0000-0007",
+   "yayinci": "Örnek Üniversitesi",
+   "url": "",
+   "alanlar": [
+    "İlahiyat"
+   ],
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "kitap",
+    "ceviri"
+   ],
+   "yillikSayi": 2,
+   "ortIlkKararGun": 45,
+   "ortKabulGun": 140,
+   "ortKabulYayinGun": 60,
+   "olcumMakaleSayisi": 40,
+   "ilkBosSayi": null,
+   "maxKelime": 8000,
+   "apc": 0,
+   "apcBirim": "TL",
+   "etikKurulZorunlu": false,
+   "endeksler": [
+    "TR Dizin"
+   ],
+   "ulke": "Türkiye",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-tr-8",
+   "ad": "Örnek Psikoloji Araştırmaları Dergisi",
+   "issn": "0000-0008",
+   "yayinci": "Örnek Üniversitesi",
+   "url": "",
+   "alanlar": [
+    "Psikoloji",
+    "Sosyal Bilimler"
+   ],
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "sistematik",
+    "tez"
+   ],
+   "yillikSayi": 3,
+   "ortIlkKararGun": 28,
+   "ortKabulGun": 95,
+   "ortKabulYayinGun": 150,
+   "olcumMakaleSayisi": 40,
+   "ilkBosSayi": null,
+   "maxKelime": 8000,
+   "apc": 0,
+   "apcBirim": "TL",
+   "etikKurulZorunlu": true,
+   "endeksler": [
+    "TR Dizin"
+   ],
+   "ulke": "Türkiye",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-tr-9",
+   "ad": "Örnek Hukuk Fakültesi Dergisi",
+   "issn": "0000-0009",
+   "yayinci": "Örnek Üniversitesi",
+   "url": "",
+   "alanlar": [
+    "Hukuk"
+   ],
+   "diller": [
+    "tr"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "kitap",
+    "ceviri",
+    "kisa"
+   ],
+   "yillikSayi": 4,
+   "ortIlkKararGun": 50,
+   "ortKabulGun": 160,
+   "ortKabulYayinGun": 80,
+   "olcumMakaleSayisi": 40,
+   "ilkBosSayi": null,
+   "maxKelime": 8000,
+   "apc": 0,
+   "apcBirim": "TL",
+   "etikKurulZorunlu": false,
+   "endeksler": [
+    "TR Dizin"
+   ],
+   "ulke": "Türkiye",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-tr-10",
+   "ad": "Örnek Ziraat Fakültesi Dergisi",
+   "issn": "0000-0010",
+   "yayinci": "Örnek Üniversitesi",
+   "url": "",
+   "alanlar": [
+    "Ziraat",
+    "Fen Bilimleri"
+   ],
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme"
+   ],
+   "yillikSayi": 6,
+   "ortIlkKararGun": 30,
+   "ortKabulGun": 100,
+   "ortKabulYayinGun": 60,
+   "olcumMakaleSayisi": 40,
+   "ilkBosSayi": null,
+   "maxKelime": 8000,
+   "apc": 0,
+   "apcBirim": "TL",
+   "etikKurulZorunlu": true,
+   "endeksler": [
+    "TR Dizin"
+   ],
+   "ulke": "Türkiye",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-tr-11",
+   "ad": "Örnek Dil ve Edebiyat Araştırmaları",
+   "issn": "0000-0011",
+   "yayinci": "Örnek Üniversitesi",
+   "url": "",
+   "alanlar": [
+    "Dil ve Edebiyat"
+   ],
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "kitap",
+    "ceviri"
+   ],
+   "yillikSayi": 3,
+   "ortIlkKararGun": 35,
+   "ortKabulGun": 120,
+   "ortKabulYayinGun": 400,
+   "olcumMakaleSayisi": 40,
+   "ilkBosSayi": "2028-01",
+   "maxKelime": 8000,
+   "apc": 0,
+   "apcBirim": "TL",
+   "etikKurulZorunlu": true,
+   "endeksler": [
+    "TR Dizin"
+   ],
+   "ulke": "Türkiye",
+   "dogrulandi": false,
+   "ornek": true
+  },
+  {
+   "id": "ornek-tr-12",
+   "ad": "Örnek Hemşirelik Dergisi",
+   "issn": "0000-0012",
+   "yayinci": "Örnek Üniversitesi",
+   "url": "",
+   "alanlar": [
+    "Sağlık Bilimleri"
+   ],
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "kabulEdilenTurler": [
+    "arastirma",
+    "derleme",
+    "sistematik",
+    "olgu",
+    "kisa",
+    "kitap",
+    "ceviri",
+    "tez"
+   ],
+   "yillikSayi": 4,
+   "ortIlkKararGun": 30,
+   "ortKabulGun": 105,
+   "ortKabulYayinGun": 75,
+   "olcumMakaleSayisi": 8,
+   "ilkBosSayi": null,
+   "maxKelime": 8000,
+   "apc": 0,
+   "apcBirim": "TL",
+   "etikKurulZorunlu": true,
+   "endeksler": [
+    "TR Dizin"
+   ],
+   "ulke": "Türkiye",
+   "dogrulandi": false,
+   "ornek": true
+  }
+ ]
+}
