@@ -56,6 +56,10 @@ select, input[type=number], input[type=month], button {
 }
 button { cursor: pointer; }
 button.birincil { background: var(--vurgu); border-color: var(--vurgu); color: var(--yuzey); font-weight: 600; }
+.ara-satir { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; }
+.ara-dugme { min-width: 96px; }
+.ara-ipucu { color: var(--dikkat); font-size: 13px; }
+.ara-dugme.bekliyor { box-shadow: 0 0 0 3px var(--dikkat-acik); }
 button:disabled { opacity: .5; cursor: not-allowed; }
 #yukle-durum.basarili { color: var(--iyi); }
 #yukle-durum.hata { color: var(--kotu); }

@@ -52,8 +52,33 @@
     return { meta: { kaynak: "Yüklenen CSV", guncelleme: new Date().toISOString().slice(0, 10) }, dergiler };
   }
 
+  // Arama parametreleri yalnızca "Ara"ya basınca uygulanır; ciz() bu anlık görüntüyü kullanır
+  const PARAMETRE_SECICI = "#calisma [name], .panel:not(#veri) .filtre input, .panel:not(#veri) .filtre select";
+  let uygulanan = {};
+
+  function parametreAnahtari(x) { return x.id || x.name; }
+
+  function parametreleriUygula() {
+    uygulanan = {};
+    document.querySelectorAll(PARAMETRE_SECICI).forEach((x) => {
+      uygulanan[parametreAnahtari(x)] = x.type === "checkbox" ? x.checked : x.value;
+    });
+    bekleyenDegisiklik(false);
+  }
+
+  function bekleyenDegisiklik(var_) {
+    document.querySelectorAll(".ara-dugme").forEach((b) => b.classList.toggle("bekliyor", var_));
+    $(".ara-ipucu").hidden = !var_;
+  }
+
+  function al(anahtar) { return uygulanan[anahtar.replace(/^#/, "")]; }
+
   function calismaOku() {
-    const f = $("#calisma");
+    const f = {
+      tip: { value: al("tip") }, alan: { value: al("alan") }, dil: { value: al("dil") },
+      kelime: { value: al("kelime") }, hedef: { value: al("hedef") },
+      apcKabul: { checked: al("apcKabul") }, etikKurul: { checked: al("etikKurul") },
+    };
     const hedef = f.hedef.value ? Motor.ayAyristir(f.hedef.value) : null;
     if (hedef) hedef.setMonth(hedef.getMonth() + 1, 0); // ayın son günü
     return {
@@ -127,7 +152,7 @@
   }
 
   function listeCiz(kap, ozet, dergiler, toplam, ek) {
-    const sadeceUygun = $("#calisma").sadeceUygun.checked;
+    const sadeceUygun = al("sadeceUygun");
     const gosterilen = sadeceUygun ? dergiler.filter((d) => d.degerlendirme.uygun) : dergiler;
     const uygun = dergiler.filter((d) => d.degerlendirme.uygun).length;
     $(ozet).textContent = toplam + " dergiden " + dergiler.length + " tanesi filtreye uyuyor, " +
@@ -142,8 +167,8 @@
     const calisma = calismaOku();
     const bugun = new Date();
     if (durum.sekme === "trdizin") {
-      const [min, maks] = $("#tr-frekans").value.split("-").map(Number);
-      const liste = Motor.trDizinListele(durum.tr.dergiler, { minSayi: min, maksSayi: maks, doluGizle: $("#tr-dolu").checked, calisma }, bugun);
+      const [min, maks] = al("tr-frekans").split("-").map(Number);
+      const liste = Motor.trDizinListele(durum.tr.dergiler, { minSayi: min, maksSayi: maks, doluGizle: al("tr-dolu"), calisma }, bugun);
       const dolu = durum.tr.dergiler.filter((d) => Motor.doluMu(d)).length;
       listeCiz("#tr-liste", "#tr-ozet", liste, durum.tr.dergiler.length,
         dolu ? " " + dolu + " dergi " + Motor.DOLULUK_SINIR_YILI + " ve sonrasına dolu." : "");
@@ -157,13 +182,13 @@
         goruldu.add(k); return true;
       });
       const liste = Motor.esciDergileri(hepsi, {
-        sadeceTurkiye: $("#esci-tr").checked, apcsiz: $("#esci-apc").checked, calisma,
+        sadeceTurkiye: al("esci-tr"), apcsiz: al("esci-apc"), calisma,
       }, bugun);
       listeCiz("#esci-liste", "#esci-ozet", liste, hepsi.length);
     } else if (durum.sekme === "yurtdisi") {
-      const ceyrekler = [$("#yd-q1").checked && "Q1", $("#yd-q2").checked && "Q2"].filter(Boolean);
+      const ceyrekler = [al("yd-q1") && "Q1", al("yd-q2") && "Q2"].filter(Boolean);
       const liste = Motor.yurtdisiSec(durum.ul.dergiler, {
-        ceyrekler, ssci: $("#yd-ssci").checked, sadeceSsci: $("#yd-sadece-ssci").checked, calisma,
+        ceyrekler, ssci: al("yd-ssci"), sadeceSsci: al("yd-sadece-ssci"), calisma,
       }, bugun);
       listeCiz("#yd-liste", "#yd-ozet", liste, durum.ul.dergiler.length);
     } else {
@@ -294,9 +319,13 @@
     secenekleriDoldur();
     ornekUyarisi();
     document.querySelectorAll(".sekmeler button").forEach((b) => b.addEventListener("click", () => sekmeSec(b.dataset.sekme)));
-    document.querySelectorAll("#calisma input, #calisma select, .filtre input, .filtre select").forEach((x) => {
-      if (x.type !== "file") x.addEventListener("input", ciz);
+    document.querySelectorAll(PARAMETRE_SECICI).forEach((x) => {
+      x.addEventListener("input", () => bekleyenDegisiklik(true));
     });
+    $("#calisma").addEventListener("submit", (e) => { e.preventDefault(); parametreleriUygula(); ciz(); });
+    document.querySelectorAll(".panel .ara-dugme").forEach((b) => b.addEventListener("click", () => {
+      parametreleriUygula(); ciz();
+    }));
     $("#yd-sadece-ssci").addEventListener("change", (e) => {
       ["#yd-q1", "#yd-q2", "#yd-ssci"].forEach((s) => { $(s).disabled = e.target.checked; });
     });
@@ -311,6 +340,7 @@
       secenekleriDoldur(); ornekUyarisi(); ciz();
       yuklemeDurumu("Sitenin kendi verisine dönüldü.");
     });
+    parametreleriUygula();
     ciz();
   }
 
