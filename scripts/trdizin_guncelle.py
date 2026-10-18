@@ -55,6 +55,10 @@ def dergipark_kok(deger):
     deger = (deger or "").strip()
     if not deger:
         return None
+    # Crossref DOI adresi: dergipark.org.tr/tr/doi/10.14514/beykozad.1898048 -> beykozad
+    m = re.search(r"dergipark\.org\.tr/(?:tr|en)/doi/10\.\d+/([\w-]+)\.\d+", deger)
+    if m:
+        return f"https://dergipark.org.tr/tr/pub/{m.group(1)}"
     if "dergipark.org.tr" in deger:
         # Hem /tr/pub/slug hem de kısa dergipark.org.tr/slug biçimleri
         m = re.search(r"dergipark\.org\.tr/(?:(?:tr|en)/)?(?:pub/)?([\w-]+)", deger)
@@ -360,7 +364,7 @@ def dergiyi_olc(getirici, getirici_cr, d, args, onbellek, bugun):
         cr = crossref_olc(getirici_cr, [d["issn"], d.get("eissn")])
         if cr and cr.get("dergiparkCrossref"):
             d["dergipark"] = dergipark_kok(cr["dergiparkCrossref"])
-        elif cr:
+        if cr and not d["dergipark"]:
             print(f"  DergiPark'ta yok; Crossref: {cr.get('olcumMakaleSayisi', 0)} makale")
             olcumu_uygula(d, cr)
             d["dogrulandi"] = bool(cr.get("ortToplamGun") or cr.get("ortKabulYayinGun"))

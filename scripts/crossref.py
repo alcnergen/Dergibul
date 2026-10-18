@@ -73,7 +73,7 @@ def ozetle(kayitlar, bugun=None):
     # Yayın sıklığı: son tam yılda kaç farklı sayı çıktı (yoksa bu yıl)
     yillik = defaultdict(set)
     for x in m:
-        if x["yayin"] and any(x["sayi"]):
+        if x["yayin"] and x["sayi"][1]:  # sayı numarası olmayan kayıtlar sıklık için kullanılamaz
             yillik[x["yayin"].year].add(x["sayi"])
     for yil in (bugun.year - 1, bugun.year):
         if yillik.get(yil):

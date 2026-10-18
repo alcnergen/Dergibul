@@ -217,6 +217,13 @@ class Crossref(unittest.TestCase):
         url = crossref.ozetle([k])["dergiparkCrossref"]
         self.assertEqual(tr.dergipark_kok(url), "https://dergipark.org.tr/tr/pub/jmr")
         self.assertIsNone(tr.dergipark_kok("https://dergipark.org.tr/tr/download/article-file/9"))
+        # Crossref'in canlıda döndürdüğü biçim
+        self.assertEqual(tr.dergipark_kok("https://dergipark.org.tr/tr/doi/10.14514/beykozad.1898048"),
+                         "https://dergipark.org.tr/tr/pub/beykozad")
+
+    def test_sayi_numarasi_yoksa_siklik_yok(self):
+        k = [{"volume": "9", "published": {"date-parts": [[2025, m, 1]]}} for m in (1, 5, 9)]
+        self.assertNotIn("tahminiYillikSayi", crossref.ozetle(k, bugun=date(2026, 1, 1)))
 
 
 class Onbellek(unittest.TestCase):
