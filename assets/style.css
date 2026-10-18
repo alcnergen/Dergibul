@@ -47,6 +47,10 @@ body {
 .giris-kart { max-width: 420px; margin: 40px auto; display: grid; gap: 12px; }
 .giris-kart p { margin: 0; }
 #giris-hata { color: var(--kotu); min-height: 1em; }
+.soz { max-width: 420px; margin: 0 auto; text-align: right; display: grid; gap: 6px; }
+.soz blockquote { margin: 0; font-size: 17px; line-height: 1.5; font-style: italic; color: var(--metin); text-wrap: balance; }
+.soz figcaption { font-size: 13px; color: var(--soluk); }
+.telif { max-width: 420px; margin: 24px auto 40px; text-align: right; font-size: 12px; color: var(--soluk); }
 
 .kart { background: var(--yuzey); border: 1px solid var(--cizgi); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
 .kart h2 { margin: 0 0 12px; font-size: 17px; }
