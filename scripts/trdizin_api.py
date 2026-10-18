@@ -40,23 +40,26 @@ ALAN_ESLEME = [
      r"balıkçılık|zootekni|toprak bilimi|bitki koruma", "Ziraat"),
     (r"mühendis|bilgisayar|enerji|malzeme|engineer|computer|energy|material|inşaat|robotik|telekomünikasyon|"
      r"taşınım|denizcilik|otomasyon|elektrik|elektronik|nükleer|polimer|termodinamik|görüntüleme bilimi|"
-     r"yeşil, sürdürülebilir|nanobilim", "Mühendislik"),
+     r"yeşil, sürdürülebilir|nanobilim|savunma bilimleri", "Mühendislik"),
     (r"fizik|kimya|matematik|biyoloji|jeoloji|çevre|istatistik|physic|chemi|mathemat|biolog|geolog|"
      r"environment|ekoloji|bitki bilimleri|zooloji|su kaynakları|optik|spektroskopi|mineraloji|meteoroloji|"
      r"entomoloji|mantar bilimi|kuş bilimi|limnoloji|genetik|astronomi|multidisipliner – fen", "Fen Bilimleri"),
     (r"sosyal|sosyoloji|tarih|coğrafya|felsefe|iletişim|siyaset|siyasi|uluslararası ilişkiler|antropoloji|"
-     r"arkeoloji|beşeri|kültürel|kentsel|kadın araştırmaları|aile çalışmaları|etnik|\betik\b|mantık|"
-     r"ortaçağ|bilgi, belge|savunma bilimleri|demografi|nüfus|social|histor|geograph|philosoph|communicat|"
+     r"arkeoloji|beşeri|kültürel|kentsel|kadın araştırmaları|aile çalışmaları|etnik|^etik$|mantık|"
+     r"ortaçağ|bilgi, belge|demografi|nüfus|social|histor|geograph|philosoph|communicat|"
      r"politic|humanit", "Sosyal Bilimler"),
 ]
 
 # TR Dizin veri tabanı (journalDatabase) -> geniş alan. TR Dizin dört veri tabanına ayrılır:
 # Sosyal ve Beşeri Bilimler, Sağlık Bilimleri, Fen Bilimleri ve Mühendislik, Yaşam Bilimleri.
 VERITABANI_ESLEME = [
-    (r"social|sosyal|human", "Sosyal Bilimler"),
-    (r"health|medic|sağlık", "Sağlık Bilimleri"),
-    (r"life|yaşam", "Ziraat"),
-    (r"science|engineer|fen|mühendis", "Fen Bilimleri"),
+    # (veri tabanı kodu deseni, temel alan, bu veri tabanındaki dergiye verilebilecek alanlar)
+    (r"social|sosyal|human", "Sosyal Bilimler",
+     {"Sosyal Bilimler", "Eğitim Bilimleri", "İlahiyat", "Hukuk", "Dil ve Edebiyat", "Psikoloji",
+      "İktisadi ve İdari Bilimler", "Güzel Sanatlar", "Spor Bilimleri"}),
+    (r"health|medic|sağlık|tıp", "Sağlık Bilimleri", {"Sağlık Bilimleri", "Psikoloji", "Spor Bilimleri"}),
+    (r"life|yaşam", "Ziraat", {"Ziraat", "Fen Bilimleri", "Sağlık Bilimleri"}),
+    (r"science|engineer|fen|mühendis|natural", "Fen Bilimleri", {"Fen Bilimleri", "Mühendislik"}),
 ]
 
 DIL_ESLEME = {"türkçe": "tr", "turkish": "tr", "ingilizce": "en", "english": "en", "almanca": "de",
@@ -113,14 +116,25 @@ def periyot_coz(metin):
 
 
 def alanlari_bul(konular, veritabanlari=()):
-    """Konu adlarını (her biri ayrı) ve TR Dizin veri tabanını Dergibul alanlarına eşler."""
+    """Konu adlarını (her biri ayrı) Dergibul alanlarına eşler.
+
+    TR Dizin derginin hangi veri tabanında (Sosyal ve Beşeri, Sağlık, Fen ve Mühendislik, Yaşam)
+    dizinlendiğini biliyorsa bu bir üst sınırdır: örneğin Sosyal veri tabanında olmayan bir mühendislik
+    dergisi, çok sayıdaki konusundan biri sosyal olsa bile "Sosyal Bilimler" alanına girmez.
+    """
     alanlar = set()
     for konu in konular:
         k = kucuk(konu).strip()
         alanlar |= {alan for desen, alan in ALAN_ESLEME if re.search(desen, k)}
+    temel, izinli = set(), set()
     for vt in veritabanlari:
         v = str(vt).lower()  # veri tabanı kodları İngilizce (SOCIAL); Türkçe küçük harf "ı" üretmesin
-        alanlar |= {alan for desen, alan in VERITABANI_ESLEME if re.search(desen, v)}
+        for desen, alan, izin in VERITABANI_ESLEME:
+            if re.search(desen, v):
+                temel.add(alan)
+                izinli |= izin
+    if izinli:
+        alanlar = (alanlar & izinli) or temel
     return sorted(alanlar)
 
 
