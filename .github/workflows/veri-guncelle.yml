@@ -39,7 +39,8 @@ jobs:
       - name: Önceki veriyi çöz
         env:
           DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
-        run: python3 scripts/sifrele.py coz
+          ESKI_PAROLA: ${{ secrets.ESKI_PAROLA }}
+        run: python3 scripts/sifrele.py coz --istege-bagli
       - name: TR Dizin listesini çek ve bu parçadaki dergileri ölç
         run: |
           mkdir -p parca
@@ -50,6 +51,7 @@ jobs:
       - name: Parçayı şifrele (parola tanımlıysa)
         env:
           DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
+          ESKI_PAROLA: ${{ secrets.ESKI_PAROLA }}
         run: |
           if [ -n "$DERGIBUL_PAROLA" ]; then python3 scripts/sifrele.py sifrele --duz-sil parca/*.json; fi
       - uses: actions/upload-artifact@v4
@@ -78,8 +80,9 @@ jobs:
       - name: Önceki veriyi ve parçaları çöz
         env:
           DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
+          ESKI_PAROLA: ${{ secrets.ESKI_PAROLA }}
         run: |
-          python3 scripts/sifrele.py coz
+          python3 scripts/sifrele.py coz --istege-bagli
           SIFRELI=$(find parcalar -name '*.enc.json')
           if [ -n "$SIFRELI" ]; then python3 scripts/sifrele.py coz $SIFRELI; fi
 
@@ -103,4 +106,5 @@ jobs:
       - name: Kaydet
         env:
           DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
+          ESKI_PAROLA: ${{ secrets.ESKI_PAROLA }}
         run: scripts/kaydet.sh
