@@ -15,6 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ortak import json_oku, json_yaz  # noqa: E402
+from trdizin_api import alanlari_bul  # noqa: E402
 from trdizin_guncelle import wos_etiketle  # noqa: E402
 
 KOK = Path(__file__).resolve().parent.parent
@@ -53,6 +54,9 @@ def main():
     dergiler = birlestir(parcalar, json_oku(args.cikti, {}))
     for d in dergiler:
         d.pop("olcumParca", None)
+        # Eşleme tablosu iyileştikçe alanlar mevcut konulardan yeniden türetilir (elle düzeltme varsa korunur)
+        if d.get("konular") and not d.get("alanElle"):
+            d["alanlar"] = alanlari_bul(d["konular"], d.get("veritabanlari") or [])
     wos_etiketle(dergiler, json_oku(KOK / "data/uluslararasi.json"))
 
     onbellek = json_oku(args.onbellek, {}) or {}

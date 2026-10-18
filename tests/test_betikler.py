@@ -107,6 +107,14 @@ class TrDizinApi(unittest.TestCase):
         self.assertFalse(api.kayit_normallestir(kayit | {"isActive": False})["aktif"])
         self.assertEqual(tr.dergipark_kok(s["dergipark"]), "https://dergipark.org.tr/tr/pub/makusobed")
 
+    def test_alan_esleme(self):
+        self.assertEqual(api.alanlari_bul(["Pediatri", "Onkoloji"]), ["Sağlık Bilimleri"])
+        self.assertEqual(api.alanlari_bul(["Siyasi Bilimler", "Beşeri Bilimler"]), ["Sosyal Bilimler"])
+        self.assertEqual(api.alanlari_bul(["İş"]), ["İktisadi ve İdari Bilimler"])
+        self.assertEqual(api.alanlari_bul(["Diş Hekimliği"]), ["Sağlık Bilimleri"])
+        self.assertEqual(api.alanlari_bul([], ["SOCIAL"]), ["Sosyal Bilimler"])
+        self.assertNotIn("Sosyal Bilimler", api.alanlari_bul(["Kalp ve Kalp Damar Sistemi", "Pediatri"]))
+
     def test_periyot(self):
         for metin, n in [("Yılda 3 Sayı", 3), ("3 ayda bir", 4), ("Quarterly", 4), ("Altı Aylık", 2),
                          ("Aylık", 12), ("Bimonthly", 6), ("2", 2), ("belirsiz", None)]:
