@@ -91,6 +91,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .rozet { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--vurgu-acik); color: var(--vurgu); }
 .rozet.kotu { background: var(--kotu-acik); color: var(--kotu); }
 .rozet.dikkat { background: var(--dikkat-acik); color: var(--dikkat); }
+.rozet.alan { background: var(--yuzey); color: var(--metin); border: 1px solid var(--cizgi); }
+.alan-notu { margin: 6px 0 0; font-size: 12px; font-style: italic; color: var(--soluk); }
 .rozet.iyi { background: var(--iyi-acik); color: var(--iyi); }
 
 .uyari { background: var(--dikkat-acik); color: var(--dikkat); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 14px; }

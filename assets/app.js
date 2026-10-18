@@ -7,7 +7,7 @@
     "Psikoloji", "Hukuk", "İlahiyat", "Dil ve Edebiyat", "Spor Bilimleri", "Güzel Sanatlar",
     "Fen Bilimleri", "Mühendislik", "Ziraat",
   ];
-  const LISTE_ALANLARI = ["alanlar", "diller", "kabulEdilenTurler", "endeksler"];
+  const LISTE_ALANLARI = ["alanlar", "ikincilAlanlar", "diller", "kabulEdilenTurler", "endeksler"];
   const SAYI_ALANLARI = ["yillikSayi", "ortIlkKararGun", "ortKabulGun", "ortKabulYayinGun", "ortToplamGun",
     "olcumMakaleSayisi", "maxKelime", "apc"];
 
@@ -181,6 +181,8 @@
     sol.append(h);
     const bilgi = [d.yayinci, d.issn && "ISSN " + d.issn, d.ulke].filter(Boolean).join(" · ");
     sol.append(el("div", "alt-bilgi", bilgi));
+    // Her dergi yalnızca ana alanının listesinde görünür; kararsız durumlarda nedeni tek cümleyle yazılır
+    if (d.alanNotu) sol.append(el("p", "alan-notu", d.alanNotu));
     kart.append(sol);
 
     const sag = el("div", "tarih");
@@ -204,6 +206,7 @@
     kart.append(m);
 
     const r = el("div", "rozetler");
+    (d.alanlar || []).forEach((x) => r.append(el("span", "rozet alan", x)));
     (d.endeksler || []).forEach((x) => r.append(el("span", "rozet", x)));
     (d.kabulEdilenTurler || []).forEach((x) => r.append(el("span", "rozet iyi", Motor.CALISMA_TIPLERI[x] || x)));
     deg.engeller.forEach((x) => r.append(el("span", "rozet kotu", x)));
