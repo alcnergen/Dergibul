@@ -6,7 +6,8 @@ Depo herkese açık olduğu için düz JSON yerine yalnızca şifreli kopyalar (
 yayınlanır. Site, girilen paroladan anahtarı tarayıcıda türetip veriyi orada çözer.
 
 Biçim: gzip'lenmiş JSON → AES-256-GCM; anahtar PBKDF2-HMAC-SHA256(parola, tuz, 310000).
-Parola DERGIBUL_PAROLA ortam değişkeninden okunur (GitHub'da depo sırrı).
+Parola DERGIBUL_PAROLA ortam değişkeninden okunur (GitHub'da depo sırrı). Parola değiştirildiyse
+eski parola ESKI_PAROLA'ya konur: çözerken önce yeni, olmazsa eski parola denenir; şifreleme hep yenisiyle.
 
 Örnek:
   DERGIBUL_PAROLA=... python3 scripts/sifrele.py sifrele   # düz dosyalar -> *.enc.json
@@ -58,8 +59,11 @@ def main():
     ap.add_argument("islem", choices=["sifrele", "coz"])
     ap.add_argument("dosyalar", nargs="*", help="düz JSON yolları (varsayılan: sitenin veri dosyaları)")
     ap.add_argument("--duz-sil", action="store_true", help="şifreledikten sonra düz dosyayı sil")
+    ap.add_argument("--istege-bagli", action="store_true",
+                    help="çözülemeyen dosyada durma, uyarı ver ve atla (ör. önbellek)")
     args = ap.parse_args()
     parola = os.environ.get("DERGIBUL_PAROLA", "")
+    adaylar = [p for p in dict.fromkeys([parola, os.environ.get("ESKI_PAROLA", "")]) if p]
     hedefler = args.dosyalar or DOSYALAR
     if args.islem == "coz" and not args.dosyalar and not any(sifreli_yol(KOK / y).exists() for y in DOSYALAR):
         print("Şifreli veri yok; çözülecek bir şey yok.")
@@ -80,11 +84,20 @@ def main():
             if args.duz_sil:
                 duz.unlink()
         elif args.islem == "coz" and enc.exists():
-            try:
-                duz.write_bytes(coz(json.loads(enc.read_text(encoding="utf-8")), parola))
-            except Exception:
-                sys.exit(f"{enc.name} çözülemedi: parola yanlış ya da dosya bozuk.")
-            print(f"çözüldü: {enc.name} -> {duz.name}")
+            paket = json.loads(enc.read_text(encoding="utf-8"))
+            for sira, aday in enumerate(adaylar):
+                try:
+                    duz.write_bytes(coz(paket, aday))
+                except Exception:
+                    continue
+                print(f"çözüldü: {enc.name} -> {duz.name}" + (" (eski parolayla)" if sira else ""))
+                break
+            else:
+                mesaj = (f"{enc.name} çözülemedi: parola yanlış ya da dosya bozuk. Parola değiştirildiyse eski "
+                         "parolayı ESKI_PAROLA sırrına ekleyin.")
+                if not args.istege_bagli:
+                    sys.exit(mesaj)
+                print(f"::warning::{mesaj} Atlandı.")
 
 
 if __name__ == "__main__":

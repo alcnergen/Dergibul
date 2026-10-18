@@ -26,7 +26,8 @@ jobs:
       - run: pip install -q cryptography
       - name: Varsa şifreli veriyi çöz
         env:
-          DERGIBUL_PAROLA: ${{ secrets.ESKI_PAROLA || secrets.DERGIBUL_PAROLA }}
+          DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
+          ESKI_PAROLA: ${{ secrets.ESKI_PAROLA }}
         run: python3 scripts/sifrele.py coz
       - name: Şifrele ve kaydet
         env:
