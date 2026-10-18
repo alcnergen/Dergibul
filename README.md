@@ -17,7 +17,7 @@ Depo herkese açık olduğu için veri düz JSON olarak tutulmaz. Depoda ve yay�
 
 Kurulum:
 
-1. **Settings → Secrets and variables → Actions → New repository secret**: adı `DERGIBUL_PAROLA`, değeri sitenin parolası (en az 8, tercihen 12+ karakter).
+1. **Settings → Secrets and variables → Actions → New repository secret**: adı `DERGIBUL_PAROLA`, değeri sitenin parolası (tercihen 12+ karakter; kısa parola uyarıyla kabul edilir).
 2. **Actions → Veriyi şifrele → Run workflow**: mevcut veri şifrelenir, düz kopyalar depodan kaldırılır ve site yeniden yayınlanır.
 
 Parolayı değiştirmek için eski parolayı `ESKI_PAROLA`, yenisini `DERGIBUL_PAROLA` sırrına yazıp "Veriyi şifrele"yi çalıştırın; ardından `ESKI_PAROLA`'yı silin.
