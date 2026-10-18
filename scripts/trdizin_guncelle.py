@@ -279,6 +279,8 @@ def satirdan_dergi(satir):
         "url": (satir.get("url") or "").strip() or kok or "",
         "dergipark": kok,
         "alanlar": liste(satir.get("alanlar")),
+        "ikincilAlanlar": liste(satir.get("ikincilAlanlar")),
+        "alanNotu": (satir.get("alanNotu") or "").strip() or None,
         "konular": liste(satir.get("konular")),
         "veritabanlari": liste(satir.get("veritabanlari")),
         "diller": liste(satir.get("diller")),

@@ -23,6 +23,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from alan import alan_belirle  # noqa: E402
 from ortak import csv_oku, issn_normal, json_yaz  # noqa: E402
 
 KOK = Path(__file__).resolve().parent.parent
@@ -49,6 +50,26 @@ ULKE = {"Turkey": "Türkiye", "Turkiye": "Türkiye", "Türkiye": "Türkiye", "TU
 def alanlari_bul(metin):
     metin = (metin or "").lower()
     return sorted({alan for desen, alan in ALAN_ESLEME if re.search(desen, metin)})
+
+
+def kategori_alanlari(kategori):
+    """Tek bir kategorinin işaret ettiği alanlar (sırayla ilk eşleşen değil, hepsi; oy bölünür)."""
+    return [alan for desen, alan in ALAN_ESLEME if re.search(desen, kategori.lower())]
+
+
+def kategorileri_ayir(metin):
+    """'Education (Q1); Law (Q2)' ya da 'Education | Law' -> ['Education', 'Law']"""
+    return [k for k in (re.sub(r"\s*\(Q[1-4]\)\s*$", "", p).strip() for p in re.split(r"[;|]", metin or "")) if k]
+
+
+def ana_alan_ata(d):
+    """Dergiye tek ana alan verir; yalnızca o alanın listesinde görünür. Kararsız durumda alanNotu yazılır."""
+    konular = d.pop("_konular", None) or kategorileri_ayir(d.get("kategoriler"))
+    if not konular:
+        return
+    sonuc = alan_belirle(d["ad"], konular, konu_esleyici=kategori_alanlari)
+    if sonuc["alanlar"]:
+        d.update(sonuc)
 
 
 def sutun(satir, *adlar):
@@ -102,6 +123,7 @@ class Birlestirici:
             d["ulke"] = d["ulke"] or ULKE.get(ulke, ulke)
             d["yayinci"] = d["yayinci"] or sutun(s, "Publisher")
             d["kategoriler"] = sutun(s, "Categories") or d["kategoriler"]
+            d.setdefault("_konular", []).extend(kategorileri_ayir(sutun(s, "Categories")))
             d["alanlar"] = sorted(set(d["alanlar"]) | set(alanlari_bul(sutun(s, "Categories") + " " + sutun(s, "Areas"))))
             kaynak_id = sutun(s, "Sourceid")
             if kaynak_id and not d["url"]:
@@ -127,6 +149,7 @@ class Birlestirici:
                 d["ulke"] = ULKE.get(son, son)
             kategoriler = sutun(s, "Web of Science Categories", "Categories")
             d["alanlar"] = sorted(set(d["alanlar"]) | set(alanlari_bul(kategoriler)))
+            d.setdefault("_konular", []).extend(kategorileri_ayir(kategoriler))
             if kategoriler and not d["kategoriler"]:
                 d["kategoriler"] = kategoriler
             diller = sutun(s, "Languages")
@@ -175,6 +198,8 @@ def main():
     secilen = [d for d in b.dergiler if secilir_mi(d)]
     if not secilen:
         sys.exit("Kaynaklardan hiç dergi seçilemedi; mevcut liste korunuyor. Dosya biçimlerini kontrol edin.")
+    for d in b.dergiler:
+        ana_alan_ata(d)
     for d in secilen:
         if not d["kategoriler"]:
             d.pop("kategoriler")

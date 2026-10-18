@@ -83,7 +83,7 @@ class TrDizinApi(unittest.TestCase):
         self.assertEqual((s["ad"], s["issn"], s["eissn"]), ("Örnek Eğitim Dergisi", "1234-5678", "8765-432X"))
         self.assertEqual(s["dergipark"], "https://dergipark.org.tr/tr/pub/ornek")
         self.assertEqual(s["yayinci"], "Örnek Üniversitesi")
-        self.assertEqual(s["alanlar"], "Eğitim Bilimleri|Sosyal Bilimler")
+        self.assertEqual(s["alanlar"], "Eğitim Bilimleri")  # tek ana alan; adı ve konusu eğitim
         self.assertEqual((s["diller"], s["yillikSayi"], s["aktif"]), ("en|tr", "4", True))
         self.assertFalse(api.kayit_normallestir(self.KAYIT | {"status": "Dizinden çıkarıldı"})["aktif"])
 
@@ -103,7 +103,8 @@ class TrDizinApi(unittest.TestCase):
         self.assertEqual((s["ad"], s["issn"], s["eissn"]), ("Beykoz Akademi Dergisi", "", "2651-5393"))
         self.assertEqual((s["yillikSayi"], s["sonYil"], s["aktif"]), ("2", 2024, True))
         self.assertEqual(s["konular"], "Coğrafya|Eğitim, Özel")
-        self.assertEqual(s["alanlar"], "Eğitim Bilimleri|Sosyal Bilimler")
+        self.assertEqual(s["alanlar"], "Eğitim Bilimleri")  # Coğrafya ile eşit; yakın karar notu yazılır
+        self.assertTrue(s["alanNotu"].startswith("Çok disiplinli dergi"))
         self.assertFalse(api.kayit_normallestir(kayit | {"isActive": False})["aktif"])
         self.assertEqual(tr.dergipark_kok(s["dergipark"]), "https://dergipark.org.tr/tr/pub/makusobed")
 
@@ -111,20 +112,36 @@ class TrDizinApi(unittest.TestCase):
         self.assertEqual(api.alanlari_bul(["Pediatri", "Onkoloji"]), ["Sağlık Bilimleri"])
         self.assertEqual(api.alanlari_bul(["Siyasi Bilimler", "Beşeri Bilimler"]), ["Sosyal Bilimler"])
         self.assertEqual(api.alanlari_bul(["İş"]), ["İktisadi ve İdari Bilimler"])
-        self.assertEqual(api.alanlari_bul(["Diş Hekimliği"]), ["Sağlık Bilimleri"])
-        self.assertEqual(api.alanlari_bul([], ["SOCIAL"]), ["Sosyal Bilimler"])
-        self.assertNotIn("Sosyal Bilimler", api.alanlari_bul(["Kalp ve Kalp Damar Sistemi", "Pediatri"]))
-        # Sitede bildirilen hatalar: tıp ve mühendislik dergileri Sosyal Bilimler'de çıkıyordu
         self.assertEqual(api.alanlari_bul(["Tıbbi Etik", "Kardiyoloji"]), ["Sağlık Bilimleri"])
         self.assertEqual(api.alanlari_bul(["Savunma Bilimleri"]), ["Mühendislik"])
-        self.assertEqual(api.alanlari_bul(["Etik"]), ["Sosyal Bilimler"])
-        # Veri tabanı üst sınır: fen/mühendislik veri tabanındaki dergiye sosyal konudan alan verilmez
-        cok_konulu = ["Mühendislik, Makine", "Kimya", "Tarih", "Bilgi, Belge Yönetimi"]
-        self.assertIn("Sosyal Bilimler", api.alanlari_bul(cok_konulu))
-        self.assertEqual(api.alanlari_bul(cok_konulu, ["SCIENCE"]), ["Fen Bilimleri", "Mühendislik"])
-        self.assertEqual(api.alanlari_bul(["Sağlık Politikaları ve Hizmetleri", "Sosyal Çalışma"], ["SOCIAL"]),
-                         ["Sosyal Bilimler"])
-        self.assertEqual(api.alanlari_bul(["Tiyatro"], ["HEALTH"]), ["Sağlık Bilimleri"])  # hiç uymazsa temel alan
+
+    def test_tek_ana_alan(self):
+        from alan import alan_belirle
+        # Bildirilen hata: tıp dergisi 'Tıbbi Etik' konusu yüzünden Sosyal Bilimler'de çıkıyordu
+        tip = alan_belirle("Bozok Tıp Dergisi", ["Kardiyoloji", "Pediatri", "Tıbbi Etik", "Tarih"], ["HEALTH"])
+        self.assertEqual(tip["alanlar"], ["Sağlık Bilimleri"])
+        # Bildirilen hata: çok konulu fen dergisi sosyal konularla Sosyal Bilimler'de çıkıyordu
+        fen = alan_belirle("Sinop Üniversitesi Fen Bilimleri Dergisi",
+                           ["Fizik", "Kimya", "Matematik", "Savunma Bilimleri", "Tarih", "Bilgi, Belge Yönetimi"],
+                           ["SCIENCE"])
+        self.assertEqual(fen["alanlar"], ["Fen Bilimleri"])
+        self.assertNotIn("Sosyal Bilimler", fen["ikincilAlanlar"])
+        # Veri tabanı bilinmese de ad + konu çoğunluğu tek alan seçer
+        muh = alan_belirle("Journal of Innovative Engineering", ["Mühendislik, Makine", "Enerji", "Tarih"])
+        self.assertEqual(muh["alanlar"], ["Mühendislik"])
+        # Ad ile konular çeliştiğinde not yazılır
+        sbe = alan_belirle("Örnek Üniversitesi Sosyal Bilimler Enstitüsü Dergisi",
+                           ["İşletme", "İktisat", "Maliye", "Tarih"], ["SOCIAL"])
+        self.assertEqual(sbe["alanlar"], ["Sosyal Bilimler"])
+        self.assertIn("Dergi adı Sosyal Bilimler alanını belirttiği için", sbe["alanNotu"])
+        # Çok disiplinli ve yakın dağılım: not yazılır
+        cok = alan_belirle("Karma Dergi", ["Tarih", "Coğrafya", "İktisat", "İşletme", "Felsefe"])
+        self.assertEqual(cok["alanlar"], ["Sosyal Bilimler"])
+        self.assertTrue(cok["alanNotu"].startswith("Çok disiplinli dergi"))
+        # Net durumda not yok
+        self.assertIsNone(tip["alanNotu"])
+        # Konu yoksa veri tabanının temel alanı
+        self.assertEqual(alan_belirle("X", [], ["SOCIAL"])["alanlar"], ["Sosyal Bilimler"])
 
     def test_periyot(self):
         for metin, n in [("Yılda 3 Sayı", 3), ("3 ayda bir", 4), ("Quarterly", 4), ("Altı Aylık", 2),
@@ -301,12 +318,15 @@ class Uluslararasi(unittest.TestCase):
             b.sjr_ekle(ortak.csv_oku(sjr))
             b.wos_ekle(ortak.csv_oku(esci), "ESCI")
             b.wos_ekle(ortak.csv_oku(ssci), "SSCI")
+            for d in b.dergiler:
+                ul.ana_alan_ata(d)
             secilen = {d["ad"]: d for d in b.dergiler if ul.secilir_mi(d)}
             self.assertEqual(set(secilen), {"Edu Q1", "Tr Q4"})
             self.assertEqual(secilen["Edu Q1"]["endeksler"], ["SSCI"])
-            self.assertEqual(secilen["Edu Q1"]["alanlar"], ["Eğitim Bilimleri", "Sosyal Bilimler"])
+            self.assertEqual(secilen["Edu Q1"]["alanlar"], ["Eğitim Bilimleri"])
             self.assertEqual(secilen["Tr Q4"]["ulke"], "Türkiye")
-            self.assertIn("Hukuk", secilen["Tr Q4"]["alanlar"])
+            self.assertEqual(secilen["Tr Q4"]["alanlar"], ["Hukuk"])
+            self.assertNotIn("_konular", secilen["Tr Q4"])
 
 
 if __name__ == "__main__":

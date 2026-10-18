@@ -90,4 +90,6 @@ test("alan seçilince yalnızca o alandaki dergiler listelenir; uygunlar önce g
   ], { calisma: { alan: "Sosyal Bilimler" } }, bugun);
   assert.deepEqual(liste.map((x) => x.ad), ["sosyal-yavas", "sosyal-kapali"]);
   assert.equal(M.trDizinListele([d({ alanlar: [] })], {}, bugun).length, 1); // alan seçilmediyse filtre yok
+  assert.ok(M.uygunlukDegerlendir(d({ alanlar: [] }), { alan: "Sosyal Bilimler" }, bugun).engeller.includes("Alanı belirlenemedi"));
+  assert.ok(M.uygunlukDegerlendir(d({ alanlar: ["Mühendislik"], ikincilAlanlar: ["Sosyal Bilimler"] }), { alan: "Sosyal Bilimler" }, bugun).engeller.includes("Alan uyuşmuyor"));
 });

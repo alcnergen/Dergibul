@@ -15,52 +15,10 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from alan import VERITABANI_ESLEME, alan_belirle, konu_alanlari  # noqa: E402
 from ortak import Getirici, issn_normal, kucuk  # noqa: E402
 
 API = "https://search.trdizin.gov.tr/api/defaultSearch/journal/"
-
-# TR Dizin konu adı -> Dergibul alanı (Türkçe ve İngilizce konu adlarını kapsar)
-ALAN_ESLEME = [
-    (r"eğitim|educat|öğretim|pedagoji", "Eğitim Bilimleri"),
-    (r"ilahiyat|\bdin\b|dinler|islam|theolog|religio", "İlahiyat"),
-    (r"hukuk|\blaw\b", "Hukuk"),
-    (r"\bdil\b|dilbilim|edebiyat|edebi|linguist|literat|filoloji|folklor", "Dil ve Edebiyat"),
-    (r"spor|sport", "Spor Bilimleri"),
-    (r"psikoloji|psycholog|davranış bilimleri", "Psikoloji"),
-    (r"iktisat|ekonomi|işletme|maliye|kamu yönetimi|muhasebe|finans|econom|business|manage|turizm|touris|"
-     r"^iş$|halkla ilişkiler|çalışma ekonomisi", "İktisadi ve İdari Bilimler"),
-    (r"sanat|müzik|mimar|tasarım|\bart\b|music|architect|design|tiyatro|film, radyo|sinema", "Güzel Sanatlar"),
-    (r"tıp|tıbbi|sağlık|hemşire|\bdiş|eczacı|klinik|cerrahi|medic|health|nurs|dentist|pharma|clinic|"
-     r"pediatri|onkoloji|nöroloji|nörolojik|psikiyatri|kardiyo|kalp|göz hastalık|kulak, burun|anestezi|"
-     r"romatoloji|üroloji|nefroloji|gastroenteroloji|hepatoloji|endokrinoloji|dermatoloji|hematoloji|"
-     r"immünoloji|enfeksiyon|ortopedi|geriatri|gerontoloji|rehabilitasyon|solunum|patoloji|fizyoloji|"
-     r"anatomi|transplantasyon|alerji|androloji|viroloji|parazitoloji|kadın hastalıkları|radyoloji|"
-     r"periferik damar|beslenme|diyetetik|ebelik|odyoloji|fizyoterapi|toksikoloji", "Sağlık Bilimleri"),
-    (r"ziraat|tarım|veteriner|gıda|su ürünleri|orman|agricult|veterinar|food|forest|bahçe bitkileri|"
-     r"balıkçılık|zootekni|toprak bilimi|bitki koruma", "Ziraat"),
-    (r"mühendis|bilgisayar|enerji|malzeme|engineer|computer|energy|material|inşaat|robotik|telekomünikasyon|"
-     r"taşınım|denizcilik|otomasyon|elektrik|elektronik|nükleer|polimer|termodinamik|görüntüleme bilimi|"
-     r"yeşil, sürdürülebilir|nanobilim|savunma bilimleri", "Mühendislik"),
-    (r"fizik|kimya|matematik|biyoloji|jeoloji|çevre|istatistik|physic|chemi|mathemat|biolog|geolog|"
-     r"environment|ekoloji|bitki bilimleri|zooloji|su kaynakları|optik|spektroskopi|mineraloji|meteoroloji|"
-     r"entomoloji|mantar bilimi|kuş bilimi|limnoloji|genetik|astronomi|multidisipliner – fen", "Fen Bilimleri"),
-    (r"sosyal|sosyoloji|tarih|coğrafya|felsefe|iletişim|siyaset|siyasi|uluslararası ilişkiler|antropoloji|"
-     r"arkeoloji|beşeri|kültürel|kentsel|kadın araştırmaları|aile çalışmaları|etnik|^etik$|mantık|"
-     r"ortaçağ|bilgi, belge|demografi|nüfus|social|histor|geograph|philosoph|communicat|"
-     r"politic|humanit", "Sosyal Bilimler"),
-]
-
-# TR Dizin veri tabanı (journalDatabase) -> geniş alan. TR Dizin dört veri tabanına ayrılır:
-# Sosyal ve Beşeri Bilimler, Sağlık Bilimleri, Fen Bilimleri ve Mühendislik, Yaşam Bilimleri.
-VERITABANI_ESLEME = [
-    # (veri tabanı kodu deseni, temel alan, bu veri tabanındaki dergiye verilebilecek alanlar)
-    (r"social|sosyal|human", "Sosyal Bilimler",
-     {"Sosyal Bilimler", "Eğitim Bilimleri", "İlahiyat", "Hukuk", "Dil ve Edebiyat", "Psikoloji",
-      "İktisadi ve İdari Bilimler", "Güzel Sanatlar", "Spor Bilimleri"}),
-    (r"health|medic|sağlık|tıp", "Sağlık Bilimleri", {"Sağlık Bilimleri", "Psikoloji", "Spor Bilimleri"}),
-    (r"life|yaşam", "Ziraat", {"Ziraat", "Fen Bilimleri", "Sağlık Bilimleri"}),
-    (r"science|engineer|fen|mühendis|natural", "Fen Bilimleri", {"Fen Bilimleri", "Mühendislik"}),
-]
 
 DIL_ESLEME = {"türkçe": "tr", "turkish": "tr", "ingilizce": "en", "english": "en", "almanca": "de",
               "german": "de", "fransızca": "fr", "french": "fr", "arapça": "ar", "arabic": "ar",
@@ -116,32 +74,22 @@ def periyot_coz(metin):
 
 
 def alanlari_bul(konular, veritabanlari=()):
-    """Konu adlarını (her biri ayrı) Dergibul alanlarına eşler.
-
-    TR Dizin derginin hangi veri tabanında (Sosyal ve Beşeri, Sağlık, Fen ve Mühendislik, Yaşam)
-    dizinlendiğini biliyorsa bu bir üst sınırdır: örneğin Sosyal veri tabanında olmayan bir mühendislik
-    dergisi, çok sayıdaki konusundan biri sosyal olsa bile "Sosyal Bilimler" alanına girmez.
-    """
-    alanlar = set()
-    for konu in konular:
-        k = kucuk(konu).strip()
-        alanlar |= {alan for desen, alan in ALAN_ESLEME if re.search(desen, k)}
-    temel, izinli = set(), set()
-    for vt in veritabanlari:
-        v = str(vt).lower()  # veri tabanı kodları İngilizce (SOCIAL); Türkçe küçük harf "ı" üretmesin
-        for desen, alan, izin in VERITABANI_ESLEME:
-            if re.search(desen, v):
-                temel.add(alan)
-                izinli |= izin
-    if izinli:
-        alanlar = (alanlar & izinli) or temel
-    return sorted(alanlar)
+    """Konuların işaret ettiği tüm alanlar (ana alan seçimi için alan.alan_belirle kullanılır)."""
+    alanlar = {a for k in konular for a in konu_alanlari(k)}
+    izinli = set().union(*[izin for vt in veritabanlari for desen, _, izin in VERITABANI_ESLEME
+                           if re.search(desen, str(vt).lower())] or [set()])
+    return sorted(alanlar & izinli if izinli else alanlar)
 
 
 def son_yil(kaynak):
     """journalYear[] içinden en güncel yılın kaydı (konu ve sayı ayları burada tutulur)."""
     yillar = [y for y in kaynak.get("journalYear") or [] if isinstance(y, dict) and y.get("year")]
     return max(yillar, key=lambda y: y["year"]) if yillar else {}
+
+
+def _alan_satiri(sonuc):
+    return {"alanlar": "|".join(sonuc["alanlar"]), "ikincilAlanlar": "|".join(sonuc["ikincilAlanlar"]),
+            "alanNotu": sonuc["alanNotu"] or ""}
 
 
 def kayit_normallestir(kaynak):
@@ -179,7 +127,7 @@ def kayit_normallestir(kaynak):
         "yayinci": yayinci.strip(),
         "dergipark": dergipark,
         "url": url,
-        "alanlar": "|".join(alanlari_bul(konular, veritabanlari)),
+        **_alan_satiri(alan_belirle(ad, konular, veritabanlari)),
         "veritabanlari": "|".join(veritabanlari),
         "konular": "|".join(dict.fromkeys(konular)),
         "diller": "|".join(diller),

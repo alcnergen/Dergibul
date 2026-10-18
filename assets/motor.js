@@ -95,8 +95,9 @@
         !dergi.kabulEdilenTurler.includes(calisma.tip)) {
       engeller.push((CALISMA_TIPLERI[calisma.tip] || calisma.tip) + " kabul etmiyor");
     }
-    if (calisma.alan && dergi.alanlar && dergi.alanlar.length && !dergi.alanlar.includes(calisma.alan)) {
-      engeller.push("Alan uyuşmuyor");
+    // Her dergi tek ana alana atanır; alanı belirlenemeyen dergi hiçbir alan aramasında çıkmaz
+    if (calisma.alan && !(dergi.alanlar || []).includes(calisma.alan)) {
+      engeller.push(dergi.alanlar && dergi.alanlar.length ? "Alan uyuşmuyor" : "Alanı belirlenemedi");
     }
     if (calisma.dil && dergi.diller && dergi.diller.length && !dergi.diller.includes(calisma.dil)) {
       engeller.push(calisma.dil.toUpperCase() + " dilinde yayın yapmıyor");
