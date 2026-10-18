@@ -156,18 +156,30 @@
    * TR Dizin listesi: varsayılan olarak yılda 3-4 sayı çıkaran ve 2028 öncesinde
    * boş sayısı olan dergileri, en erken tahmini yayın tarihine göre sıralar.
    */
+  // Alan seçildiyse yalnızca o alandaki dergiler listelenir (alanı bilinmeyenler de dışarıda kalır)
+  function alanUyar(dergi, alan) {
+    return !alan || (dergi.alanlar || []).includes(alan);
+  }
+
   function trDizinListele(dergiler, secenek, bugun) {
     secenek = Object.assign({ minSayi: 3, maksSayi: 4, doluGizle: true, sadeceUygun: false, calisma: {} }, secenek);
     bugun = bugun || new Date();
     return dergiler
       .filter((d) => !secenek.minSayi || frekansUygunMu(d, secenek.minSayi, secenek.maksSayi))
       .filter((d) => !secenek.doluGizle || !doluMu(d))
+      .filter((d) => alanUyar(d, secenek.calisma.alan))
       .map((d) => Object.assign({}, d, { degerlendirme: uygunlukDegerlendir(d, secenek.calisma, bugun) }))
       .filter((d) => !secenek.sadeceUygun || d.degerlendirme.uygun)
       .sort(tarihSirala);
   }
 
+  // Çalışmaya uygun dergiler her zaman uygun olmayanlardan önce gelir
+  function uygunOnce(a, b) {
+    return (b.degerlendirme.uygun ? 1 : 0) - (a.degerlendirme.uygun ? 1 : 0);
+  }
+
   function tarihSirala(a, b) {
+    if (uygunOnce(a, b)) return uygunOnce(a, b);
     const ta = a.degerlendirme.tahminiTarih, tb = b.degerlendirme.tahminiTarih;
     if (ta && tb && ta - tb !== 0) return ta - tb;
     if (ta && !tb) return -1;
@@ -185,7 +197,7 @@
       .filter((d) => d.endeksler && d.endeksler.includes("ESCI"))
       .filter((d) => !secenek.sadeceTurkiye || d.ulke === "Türkiye")
       .filter((d) => !secenek.apcsiz || !d.apc)
-      .filter((d) => !secenek.alan || (d.alanlar || []).includes(secenek.alan))
+      .filter((d) => alanUyar(d, secenek.alan || (secenek.calisma || {}).alan))
       .map((d) => Object.assign({}, d, { degerlendirme: uygunlukDegerlendir(d, secenek.calisma || {}, bugun) }))
       .sort(tarihSirala);
   }
@@ -206,9 +218,9 @@
         if (secenek.sadeceSsci) return ssci;
         return secenek.ceyrekler.includes(d.ceyrek) || (secenek.ssci && ssci);
       })
-      .filter((d) => !secenek.alan || (d.alanlar || []).includes(secenek.alan))
+      .filter((d) => alanUyar(d, secenek.alan || (secenek.calisma || {}).alan))
       .map((d) => Object.assign({}, d, { degerlendirme: uygunlukDegerlendir(d, secenek.calisma || {}, bugun) }))
-      .sort((a, b) => (CEYREK_SIRA[a.ceyrek] || 9) - (CEYREK_SIRA[b.ceyrek] || 9) || tarihSirala(a, b));
+      .sort((a, b) => uygunOnce(a, b) || (CEYREK_SIRA[a.ceyrek] || 9) - (CEYREK_SIRA[b.ceyrek] || 9) || tarihSirala(a, b));
   }
 
   return {
@@ -221,6 +233,7 @@
     doluMu,
     frekansUygunMu,
     uygunlukDegerlendir,
+    alanUyar,
     trDizinListele,
     esciDergileri,
     yurtdisiSec,

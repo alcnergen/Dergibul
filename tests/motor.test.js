@@ -80,3 +80,14 @@ test("yurtdışı: Q1, Q2 ve SSCI", () => {
   assert.deepEqual(M.yurtdisiSec(liste, { sadeceSsci: true }, bugun).map((x) => x.ad), ["q3ssci"]);
   assert.deepEqual(M.yurtdisiSec(liste, { ceyrekler: ["Q1"], ssci: false }, bugun).map((x) => x.ad), ["q1"]);
 });
+
+test("alan seçilince yalnızca o alandaki dergiler listelenir; uygunlar önce gelir", () => {
+  const liste = M.trDizinListele([
+    d({ ad: "tip-hizli", alanlar: ["Sağlık Bilimleri"], ortKabulYayinGun: 10 }),
+    d({ ad: "alansiz", alanlar: [] }),
+    d({ ad: "sosyal-yavas", alanlar: ["Sosyal Bilimler"], ortKabulYayinGun: 200 }),
+    d({ ad: "sosyal-kapali", alanlar: ["Sosyal Bilimler"], ortKabulYayinGun: 5, gonderimKapali: true }),
+  ], { calisma: { alan: "Sosyal Bilimler" } }, bugun);
+  assert.deepEqual(liste.map((x) => x.ad), ["sosyal-yavas", "sosyal-kapali"]);
+  assert.equal(M.trDizinListele([d({ alanlar: [] })], {}, bugun).length, 1); // alan seçilmediyse filtre yok
+});

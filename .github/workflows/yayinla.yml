@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
   # Bot'un veri commit'leri push tetiklemediği için veri güncellemesinden sonra da yayınla
   workflow_run:
-    workflows: ["Veri güncelle", "Veriyi şifrele"]
+    workflows: ["Veri güncelle", "Veriyi şifrele", "Parçaları kurtar"]
     types: [completed]
 
 permissions:

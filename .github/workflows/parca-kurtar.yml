@@ -1,0 +1,49 @@
+name: Parçaları kurtar
+
+# Ölçüm parçaları başarıyla bitip yalnızca birleştirme/kaydetme adımı düşen bir "Veri güncelle"
+# çalıştırmasının sonucunu kaydeder (artifact'lar 3 gün saklanır).
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Parçaları alınacak 'Veri güncelle' çalıştırmasının numarası (URL'deki runs/<numara>)"
+        required: true
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: veri-guncelle
+  cancel-in-progress: false
+
+jobs:
+  kurtar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q cryptography
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: parca-*
+          path: parcalar
+          run-id: ${{ github.event.inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Önceki veriyi ve parçaları çöz
+        env:
+          DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
+        run: |
+          python3 scripts/sifrele.py coz
+          SIFRELI=$(find parcalar -name '*.enc.json')
+          if [ -n "$SIFRELI" ]; then python3 scripts/sifrele.py coz $SIFRELI; fi
+      - name: Parçaları birleştir
+        run: python3 scripts/parca_birlestir.py parcalar
+      - name: Kaydet
+        env:
+          DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
+        run: scripts/kaydet.sh "Veri güncellemesi (çalıştırma ${{ github.event.inputs.run_id }} kurtarıldı)"

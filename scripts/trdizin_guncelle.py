@@ -280,6 +280,7 @@ def satirdan_dergi(satir):
         "dergipark": kok,
         "alanlar": liste(satir.get("alanlar")),
         "konular": liste(satir.get("konular")),
+        "veritabanlari": liste(satir.get("veritabanlari")),
         "diller": liste(satir.get("diller")),
         "kabulEdilenTurler": liste(satir.get("kabulEdilenTurler")),
         "yillikSayi": sayi(satir.get("yillikSayi")),

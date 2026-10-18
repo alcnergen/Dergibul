@@ -21,22 +21,42 @@ API = "https://search.trdizin.gov.tr/api/defaultSearch/journal/"
 
 # TR Dizin konu adı -> Dergibul alanı (Türkçe ve İngilizce konu adlarını kapsar)
 ALAN_ESLEME = [
-    (r"eğitim|educat", "Eğitim Bilimleri"),
-    (r"ilahiyat|din |dinler|islam|theolog|religio", "İlahiyat"),
+    (r"eğitim|educat|öğretim|pedagoji", "Eğitim Bilimleri"),
+    (r"ilahiyat|\bdin\b|dinler|islam|theolog|religio", "İlahiyat"),
     (r"hukuk|\blaw\b", "Hukuk"),
-    (r"dil|edebiyat|linguist|literat|filoloji", "Dil ve Edebiyat"),
+    (r"\bdil\b|dilbilim|edebiyat|edebi|linguist|literat|filoloji|folklor", "Dil ve Edebiyat"),
     (r"spor|sport", "Spor Bilimleri"),
-    (r"psikoloji|psycholog", "Psikoloji"),
-    (r"iktisat|ekonomi|işletme|maliye|kamu yönetimi|muhasebe|finans|econom|business|manage|turizm|touris",
-     "İktisadi ve İdari Bilimler"),
-    (r"sanat|müzik|mimar|tasarım|\bart\b|music|architect|design", "Güzel Sanatlar"),
-    (r"tıp|sağlık|hemşire|diş|eczacı|klinik|cerrahi|medic|health|nurs|dentist|pharma|clinic", "Sağlık Bilimleri"),
-    (r"ziraat|tarım|veteriner|gıda|su ürünleri|orman|agricult|veterinar|food|forest", "Ziraat"),
-    (r"mühendis|bilgisayar|enerji|malzeme|engineer|computer|energy|material", "Mühendislik"),
-    (r"fizik|kimya|matematik|biyoloji|jeoloji|çevre|istatistik|physic|chemi|mathemat|biolog|geolog|environment",
-     "Fen Bilimleri"),
-    (r"sosyal|sosyoloji|tarih|coğrafya|felsefe|iletişim|siyaset|uluslararası ilişkiler|antropoloji|arkeoloji|"
-     r"social|histor|geograph|philosoph|communicat|politic", "Sosyal Bilimler"),
+    (r"psikoloji|psycholog|davranış bilimleri", "Psikoloji"),
+    (r"iktisat|ekonomi|işletme|maliye|kamu yönetimi|muhasebe|finans|econom|business|manage|turizm|touris|"
+     r"^iş$|halkla ilişkiler|çalışma ekonomisi", "İktisadi ve İdari Bilimler"),
+    (r"sanat|müzik|mimar|tasarım|\bart\b|music|architect|design|tiyatro|film, radyo|sinema", "Güzel Sanatlar"),
+    (r"tıp|tıbbi|sağlık|hemşire|\bdiş|eczacı|klinik|cerrahi|medic|health|nurs|dentist|pharma|clinic|"
+     r"pediatri|onkoloji|nöroloji|nörolojik|psikiyatri|kardiyo|kalp|göz hastalık|kulak, burun|anestezi|"
+     r"romatoloji|üroloji|nefroloji|gastroenteroloji|hepatoloji|endokrinoloji|dermatoloji|hematoloji|"
+     r"immünoloji|enfeksiyon|ortopedi|geriatri|gerontoloji|rehabilitasyon|solunum|patoloji|fizyoloji|"
+     r"anatomi|transplantasyon|alerji|androloji|viroloji|parazitoloji|kadın hastalıkları|radyoloji|"
+     r"periferik damar|beslenme|diyetetik|ebelik|odyoloji|fizyoterapi|toksikoloji", "Sağlık Bilimleri"),
+    (r"ziraat|tarım|veteriner|gıda|su ürünleri|orman|agricult|veterinar|food|forest|bahçe bitkileri|"
+     r"balıkçılık|zootekni|toprak bilimi|bitki koruma", "Ziraat"),
+    (r"mühendis|bilgisayar|enerji|malzeme|engineer|computer|energy|material|inşaat|robotik|telekomünikasyon|"
+     r"taşınım|denizcilik|otomasyon|elektrik|elektronik|nükleer|polimer|termodinamik|görüntüleme bilimi|"
+     r"yeşil, sürdürülebilir|nanobilim", "Mühendislik"),
+    (r"fizik|kimya|matematik|biyoloji|jeoloji|çevre|istatistik|physic|chemi|mathemat|biolog|geolog|"
+     r"environment|ekoloji|bitki bilimleri|zooloji|su kaynakları|optik|spektroskopi|mineraloji|meteoroloji|"
+     r"entomoloji|mantar bilimi|kuş bilimi|limnoloji|genetik|astronomi|multidisipliner – fen", "Fen Bilimleri"),
+    (r"sosyal|sosyoloji|tarih|coğrafya|felsefe|iletişim|siyaset|siyasi|uluslararası ilişkiler|antropoloji|"
+     r"arkeoloji|beşeri|kültürel|kentsel|kadın araştırmaları|aile çalışmaları|etnik|\betik\b|mantık|"
+     r"ortaçağ|bilgi, belge|savunma bilimleri|demografi|nüfus|social|histor|geograph|philosoph|communicat|"
+     r"politic|humanit", "Sosyal Bilimler"),
+]
+
+# TR Dizin veri tabanı (journalDatabase) -> geniş alan. TR Dizin dört veri tabanına ayrılır:
+# Sosyal ve Beşeri Bilimler, Sağlık Bilimleri, Fen Bilimleri ve Mühendislik, Yaşam Bilimleri.
+VERITABANI_ESLEME = [
+    (r"social|sosyal|human", "Sosyal Bilimler"),
+    (r"health|medic|sağlık", "Sağlık Bilimleri"),
+    (r"life|yaşam", "Ziraat"),
+    (r"science|engineer|fen|mühendis", "Fen Bilimleri"),
 ]
 
 DIL_ESLEME = {"türkçe": "tr", "turkish": "tr", "ingilizce": "en", "english": "en", "almanca": "de",
@@ -92,9 +112,16 @@ def periyot_coz(metin):
     return None
 
 
-def alanlari_bul(konular):
-    metin = kucuk(" ".join(str(k) for k in konular))
-    return sorted({alan for desen, alan in ALAN_ESLEME if re.search(desen, metin)})
+def alanlari_bul(konular, veritabanlari=()):
+    """Konu adlarını (her biri ayrı) ve TR Dizin veri tabanını Dergibul alanlarına eşler."""
+    alanlar = set()
+    for konu in konular:
+        k = kucuk(konu).strip()
+        alanlar |= {alan for desen, alan in ALAN_ESLEME if re.search(desen, k)}
+    for vt in veritabanlari:
+        v = str(vt).lower()  # veri tabanı kodları İngilizce (SOCIAL); Türkçe küçük harf "ı" üretmesin
+        alanlar |= {alan for desen, alan in VERITABANI_ESLEME if re.search(desen, v)}
+    return sorted(alanlar)
 
 
 def son_yil(kaynak):
@@ -107,6 +134,7 @@ def kayit_normallestir(kaynak):
     """API'nin _source nesnesini, trdizin_guncelle.satirdan_dergi'nin beklediği satıra çevirir."""
     c = list(duzlestir(kaynak))
     yil = son_yil(kaynak)
+    veritabanlari = [str(v) for v in (yil.get("databases") or kaynak.get("journalDatabase") or []) if v]
     ad = next((str(v) for v in _sec(c, r"^(name|title|journalname|journaltitle|ordertitle)$")), "")
     issn = next((issn_normal(str(v)) for v in _sec(c, r"(^|\.)(p|print)?issn$") if issn_normal(str(v))), "")
     eissn = next((issn_normal(str(v)) for v in _sec(c, r"(^|\.)(e|electronic|online)_?issn$") if issn_normal(str(v))), "")
@@ -137,7 +165,8 @@ def kayit_normallestir(kaynak):
         "yayinci": yayinci.strip(),
         "dergipark": dergipark,
         "url": url,
-        "alanlar": "|".join(alanlari_bul(konular)),
+        "alanlar": "|".join(alanlari_bul(konular, veritabanlari)),
+        "veritabanlari": "|".join(veritabanlari),
         "konular": "|".join(dict.fromkeys(konular)),
         "diller": "|".join(diller),
         "yillikSayi": str(periyot or ""),
