@@ -1,0 +1,36 @@
+name: Canlı kontrol
+
+# TR Dizin API'si ve DergiPark ayrıştırıcılarını gerçek sitelere karşı küçük bir örnekle dener.
+# Veri dosyalarına yazmaz; sonuç yalnızca log'a basılır.
+on:
+  pull_request:
+    paths: ["scripts/**", ".github/workflows/canli-kontrol.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  kontrol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: TR Dizin ilk kayıt
+        run: python3 scripts/trdizin_api.py --incele
+      - name: 3 dergiyle uçtan uca ölçüm
+        run: |
+          python3 scripts/trdizin_guncelle.py --max-dergi 3 --cikti /tmp/kontrol.json
+          python3 - <<'PY'
+          import json
+          v = json.load(open("/tmp/kontrol.json"))
+          print(json.dumps(v["meta"], ensure_ascii=False, indent=1))
+          for d in v["dergiler"][:5]:
+              print(json.dumps(d, ensure_ascii=False))
+          olculen = [d for d in v["dergiler"] if d.get("olcumTarihi")]
+          for d in olculen:
+              print("OLCULEN:", json.dumps(d, ensure_ascii=False))
+          PY
