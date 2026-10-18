@@ -20,8 +20,13 @@ jobs:
   guncelle:
     runs-on: ubuntu-latest
     timeout-minutes: 300
+    env:
+      PYTHONUNBUFFERED: "1"   # ilerleme log'da canlı görünsün
     steps:
+      # Kuyrukta bekleyen çalıştırma, önceki çalıştırmanın kaydettiği en son veriyi alsın
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -54,4 +59,5 @@ jobs:
           git config user.email "dergibul-bot@users.noreply.github.com"
           git add data/*.json
           git diff --cached --quiet || git commit -m "Veri güncellemesi $(date -u +%F)"
-          git push
+          git pull --rebase origin main
+          git push origin HEAD:main
