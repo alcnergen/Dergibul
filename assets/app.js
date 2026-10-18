@@ -217,15 +217,23 @@
     return kart;
   }
 
+  // Arama bir filtredir: çalışmanın kriterlerine uymayan dergiler listelenmez, yalnızca sayılır
   function listeCiz(kap, ozet, dergiler, toplam, ek) {
-    const sadeceUygun = al("sadeceUygun");
-    const gosterilen = sadeceUygun ? dergiler.filter((d) => d.degerlendirme.uygun) : dergiler;
-    const uygun = dergiler.filter((d) => d.degerlendirme.uygun).length;
-    $(ozet).textContent = toplam + " dergiden " + dergiler.length + " tanesi filtreye uyuyor, " +
-      uygun + " tanesi çalışmanıza uygun." + (ek || "");
+    const gosterilen = dergiler.filter((d) => d.degerlendirme.uygun);
+    const elenen = dergiler.length - gosterilen.length;
+    const nedenler = {};
+    dergiler.forEach((d) => d.degerlendirme.engeller.forEach((e) => {
+      const k = e.replace(/\s*\(.*\)$/, "");  // "Yayın ücreti var (1500 TL)" -> "Yayın ücreti var"
+      nedenler[k] = (nedenler[k] || 0) + 1;
+    }));
+    const enSik = Object.entries(nedenler).sort((a, b) => b[1] - a[1]).slice(0, 3)
+      .map(([n, c]) => n.toLocaleLowerCase("tr") + " (" + c + ")").join(", ");
+    $(ozet).textContent = gosterilen.length + " dergi arama kriterlerinize uyuyor." +
+      (elenen ? " " + elenen + " dergi gizlendi" + (enSik ? ": " + enSik : "") + "." : "") +
+      " Toplam " + toplam + " dergi." + (ek || "");
     const k = $(kap);
     k.replaceChildren();
-    if (!gosterilen.length) k.append(el("div", "bos", "Bu ölçütlere uyan dergi yok. Filtreleri gevşetmeyi deneyin."));
+    if (!gosterilen.length) k.append(el("div", "bos", "Bu kriterlere uyan dergi yok. Kriterleri gevşetip yeniden arayın."));
     else gosterilen.forEach((d) => k.append(dergiKarti(d)));
   }
 
