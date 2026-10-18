@@ -1,0 +1,170 @@
+<title>Dergibul Kullanım Rehberi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Düzen: dikey akış — 5 adımlık şerit, ortada açıklamalı örnek dergi kartı, altta rozet sözlüğü */
+:root {
+  --zemin: #f4f6fa; --yuzey: #ffffff; --murekkep: #16203a; --soluk: #5a6478;
+  --vurgu: #2c56c9; --vurgu-acik: #e4ebfb; --cizgi: #d9dfea;
+  --iyi: #1f7a4d; --iyi-acik: #e1f3e9; --dikkat: #9a6212; --dikkat-acik: #fbf0dc; --kotu: #b23a3a; --kotu-acik: #fbe4e4;
+  --f-baslik: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-govde: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-veri: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --zemin: #0f1422; --yuzey: #182036; --murekkep: #e7ebf4; --soluk: #9aa4ba;
+  --vurgu: #8aa8ff; --vurgu-acik: #233259; --cizgi: #2a3452;
+  --iyi: #6fd3a0; --iyi-acik: #173a2a; --dikkat: #f0bf6a; --dikkat-acik: #3d2f15; --kotu: #f08f8f; --kotu-acik: #3e1d1f; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --zemin: #0f1422; --yuzey: #182036; --murekkep: #e7ebf4; --soluk: #9aa4ba;
+  --vurgu: #8aa8ff; --vurgu-acik: #233259; --cizgi: #2a3452;
+  --iyi: #6fd3a0; --iyi-acik: #173a2a; --dikkat: #f0bf6a; --dikkat-acik: #3d2f15; --kotu: #f08f8f; --kotu-acik: #3e1d1f; color-scheme: dark }
+
+body { background: var(--zemin); color: var(--murekkep); font: 16px/1.55 var(--f-govde); }
+.kap { max-width: 980px; margin: 0 auto; padding-block: 40px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 44px; }
+h1, h2, h3 { font-family: var(--f-baslik); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(34px, 6vw, 54px); font-weight: 800; letter-spacing: -.02em; line-height: 1.05; }
+h2 { font-size: 24px; font-weight: 800; }
+h3 { font-size: 17px; font-weight: 600; }
+p { margin: 0; }
+.etiket { font: 500 12px var(--f-veri); letter-spacing: .08em; text-transform: uppercase; color: var(--vurgu); }
+.giris { display: grid; gap: 14px; max-width: 64ch; }
+.giris p { color: var(--soluk); font-size: 18px; }
+.adres { font-family: var(--f-veri); font-size: 14px; background: var(--vurgu-acik); color: var(--vurgu); padding: 4px 10px; border-radius: 6px; justify-self: start; word-break: break-all; }
+
+.adimlar { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; counter-reset: adim; }
+.adimlar li { counter-increment: adim; background: var(--yuzey); border: 1px solid var(--cizgi); border-radius: 10px; padding: 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.adimlar li::before { content: counter(adim); font: 800 30px/1 var(--f-baslik); color: var(--vurgu); }
+.adimlar p { font-size: 14px; color: var(--soluk); }
+.adimlar b { color: var(--murekkep); font-weight: 600; }
+
+.bolum { display: grid; gap: 16px; }
+.sekmeler { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.sekme { border-top: 3px solid var(--vurgu); padding-top: 12px; display: grid; gap: 4px; min-width: 0; }
+.sekme p { font-size: 14px; color: var(--soluk); }
+
+.ornek { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .ornek { grid-template-columns: 1fr; } }
+.kart { background: var(--yuzey); border: 1px solid var(--cizgi); border-radius: 12px; padding: 18px; display: grid; grid-template-columns: 1fr auto; gap: 12px 16px; box-shadow: 0 6px 24px -14px rgba(22,32,58,.35); }
+.kart h4 { margin: 0; font: 600 17px var(--f-baslik); color: var(--vurgu); }
+.kart .alt { font-size: 12px; color: var(--soluk); }
+.kart .not { font-size: 12px; font-style: italic; color: var(--soluk); margin-top: 6px; }
+.tarih { text-align: right; }
+.tarih span { display: block; font-size: 12px; color: var(--soluk); }
+.tarih strong { display: block; font: 800 20px var(--f-baslik); }
+.metrik { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.metrik b { font-family: var(--f-veri); font-weight: 500; }
+.rozetler { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.rozet { font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--vurgu-acik); color: var(--vurgu); white-space: nowrap; }
+.rozet.alan { background: var(--zemin); color: var(--murekkep); border: 1px solid var(--cizgi); }
+.rozet.iyi { background: var(--iyi-acik); color: var(--iyi); }
+.rozet.dikkat { background: var(--dikkat-acik); color: var(--dikkat); }
+.rozet.kotu { background: var(--kotu-acik); color: var(--kotu); }
+.isaret { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--vurgu); color: var(--yuzey); font: 600 11px var(--f-veri); vertical-align: middle; margin-right: 4px; flex: none; }
+.aciklamalar { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.aciklamalar li { display: flex; gap: 8px; font-size: 14px; }
+.aciklamalar li div { min-width: 0; }
+
+.formul { background: var(--yuzey); border: 1px dashed var(--cizgi); border-radius: 10px; padding: 16px; font-family: var(--f-veri); font-size: 14px; overflow-x: auto; }
+.formul small { display: block; font-family: var(--f-govde); color: var(--soluk); margin-top: 8px; font-size: 13px; }
+
+.sozluk { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px 20px; }
+.sozluk div { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; font-size: 14px; }
+.sozluk div > span:last-child { color: var(--soluk); }
+
+.ipuclari { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.ipucu { background: var(--yuzey); border-left: 3px solid var(--dikkat); padding: 12px 14px; font-size: 14px; border-radius: 0 8px 8px 0; }
+.ipucu b { display: block; margin-bottom: 2px; }
+footer { font-size: 13px; color: var(--soluk); border-top: 1px solid var(--cizgi); padding-top: 16px; }
+</style>
+
+<div class="kap">
+  <header class="giris">
+    <span class="etiket">Akademisyenler için kısa rehber</span>
+    <h1>Makaleniz için en erken yayın imkânını bulun</h1>
+    <p>Dergibul, TR Dizin dergilerini her gece tarar; ortalama değerlendirme ve yayın sürelerini ölçer, çalışmanıza uyan dergileri en yakın tarihten başlayarak sıralar.</p>
+    <span class="adres">alcnergen.github.io/Dergibul</span>
+  </header>
+
+  <section class="bolum" aria-labelledby="b1">
+    <h2 id="b1">Beş adımda kullanım</h2>
+    <ol class="adimlar">
+      <li><h3>Giriş yapın</h3><p>Size iletilen <b>parolayı</b> girin. "Bu cihazda hatırla" ile tekrar sorulmaz.</p></li>
+      <li><h3>Çalışmanızı tanımlayın</h3><p><b>Çalışma tipi, alan, dil,</b> kelime sayısı ve en geç yayın tarihini seçin.</p></li>
+      <li><h3>Ara'ya basın</h3><p>Kriterlere <b>uymayan dergiler gizlenir</b>; kaç derginin neden elendiği özette yazar.</p></li>
+      <li><h3>Sekmeyi seçin</h3><p><b>TR Dizin, ESCI</b> ya da <b>Yurtdışı Q1 · Q2 · SSCI</b>.</p></li>
+      <li><h3>Kartı okuyun</h3><p>Tahmini yayın tarihi, süreler ve uyarılar her dergi kartında.</p></li>
+    </ol>
+  </section>
+
+  <section class="bolum" aria-labelledby="b2">
+    <h2 id="b2">Sekmeler</h2>
+    <div class="sekmeler">
+      <div class="sekme"><h3>TR Dizin</h3><p>Varsayılan olarak yılda 3–4 sayı çıkaran dergiler. "2028 ve sonrasına dolu dergileri gizle" seçili gelir.</p></div>
+      <div class="sekme"><h3>ESCI</h3><p>Web of Science ESCI dergileri. Yalnızca Türkiye kaynaklı ya da yalnızca ücretsiz dergilerle daraltılabilir.</p></div>
+      <div class="sekme"><h3>Yurtdışı: Q1 · Q2 · SSCI</h3><p>Çeyreği Q1/Q2 olan ya da SSCI'da taranan dergiler. "Yalnızca SSCI" seçeneği vardır.</p></div>
+    </div>
+  </section>
+
+  <section class="bolum" aria-labelledby="b3">
+    <h2 id="b3">Bir dergi kartı nasıl okunur?</h2>
+    <div class="ornek">
+      <article class="kart" aria-label="Örnek dergi kartı">
+        <div>
+          <h4><span class="isaret">1</span>Örnek Üniversitesi Sosyal Bilimler Dergisi</h4>
+          <div class="alt">Örnek Üniversitesi · ISSN 1234-5678</div>
+          <p class="not"><span class="isaret">5</span>Dergi adı Sosyal Bilimler alanını belirttiği için bu listede; ancak konularının %58 kadarı İktisadi ve İdari Bilimler kapsamında.</p>
+        </div>
+        <div class="tarih"><span>Tahmini yayın</span><strong><span class="isaret">2</span>Mart 2027</strong><span>Uygunluk puanı 86/100</span></div>
+        <div class="metrik"><span class="isaret">3</span>
+          <span>Yılda sayı: <b>3</b></span><span>İlk karar: <b>34 gün</b></span><span>Gönderim → kabul: <b>96 gün</b></span>
+          <span>Kabul → yayın: <b>48 gün</b></span><span>Kabul oranı: <b>%31</b></span>
+        </div>
+        <div class="rozetler"><span class="isaret">4</span>
+          <span class="rozet alan">Sosyal Bilimler</span><span class="rozet">TR Dizin</span>
+          <span class="rozet iyi">Araştırma makalesi</span><span class="rozet dikkat">Düşük kabul oranı</span>
+        </div>
+      </article>
+      <ol class="aciklamalar">
+        <li><span class="isaret">1</span><div><b>Dergi adı</b> derginin kendi sitesine gider. Başvuru kurallarını oradan doğrulayın.</div></li>
+        <li><span class="isaret">2</span><div><b>Tahmini yayın tarihi</b> listenin sıralama ölçütüdür; en yakın tarih en üstte.</div></li>
+        <li><span class="isaret">3</span><div><b>Süreler</b> son sayılardaki makalelerin gerçek gönderim, kabul ve yayın tarihlerinden ölçülür.</div></li>
+        <li><span class="isaret">4</span><div><b>Rozetler</b> derginin ana alanını, dizinlerini, kabul ettiği türleri ve uyarıları gösterir.</div></li>
+        <li><span class="isaret">5</span><div><b>Alan notu</b> yalnızca kararsız durumlarda çıkar ve derginin neden bu alanın listesinde olduğunu tek cümleyle açıklar.</div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="bolum" aria-labelledby="b4">
+    <h2 id="b4">Tahmini tarih nasıl hesaplanır?</h2>
+    <div class="formul">bugün + ort.(gönderim → kabul) + ort.(kabul → yayın)
+      <small>Dergi ilk boş sayısını ya da makale kabulünün açılacağı tarihi ilan ettiyse, ikisinden geç olanı alınır. 10 makalenin altındaki ölçümler düşük güvenilirlikli sayılır.</small>
+    </div>
+  </section>
+
+  <section class="bolum" aria-labelledby="b5">
+    <h2 id="b5">Rozet sözlüğü</h2>
+    <div class="sozluk">
+      <div><span class="rozet alan">Sosyal Bilimler</span><span>Derginin tek ana alanı. Dergi yalnızca bu alanın aramasında çıkar.</span></div>
+      <div><span class="rozet iyi">Araştırma makalesi</span><span>Dergi bu çalışma tipini kabul ediyor.</span></div>
+      <div><span class="rozet dikkat">Düşük kabul oranı</span><span>Ret olasılığı yüksek; süre tahminini buna göre okuyun.</span></div>
+      <div><span class="rozet kotu">Gönderime kapalı</span><span>Dergi şu an makale almıyor; açılış tarihi biliniyorsa tarihe yansır.</span></div>
+      <div><span class="rozet dikkat">DergiPark'ta yok</span><span>Dergi kendi sitesinde yayın yapıyor.</span></div>
+      <div><span class="rozet">Süreler: Crossref</span><span>Süreler DergiPark yerine Crossref kayıtlarından ölçüldü.</span></div>
+    </div>
+  </section>
+
+  <section class="bolum" aria-labelledby="b6">
+    <h2 id="b6">Bilmeniz gerekenler</h2>
+    <div class="ipuclari">
+      <div class="ipucu"><b>Her gece güncellenir</b>Liste ve süreler her gece 03:17'de (TSİ) yenilenir. Yeni dergiler eklenir, dizinden çıkanlar düşer.</div>
+      <div class="ipucu"><b>Parametreler Ara ile uygulanır</b>Seçimleri değiştirdikten sonra Ara'ya basmadan liste değişmez.</div>
+      <div class="ipucu"><b>Veri sekmesi</b>Verinin son güncellenme tarihi buradadır. Gerekirse kendi JSON/CSV dosyanızı "Sisteme aktar" ile yükleyebilirsiniz.</div>
+    </div>
+  </section>
+
+  <footer>Veriler bilgi amaçlıdır. Başvurmadan önce derginin güncel yazım kurallarını ve dizin durumunu kendi sitesinden doğrulayın. Karttaki dergi kurgusal bir örnektir.</footer>
+</div>
