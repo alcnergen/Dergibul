@@ -12,6 +12,7 @@ import ortak  # noqa: E402
 import trdizin_api as api  # noqa: E402
 import crossref  # noqa: E402
 import parca_birlestir  # noqa: E402
+import sifrele  # noqa: E402
 import trdizin_guncelle as tr  # noqa: E402
 import uluslararasi_guncelle as ul  # noqa: E402
 
@@ -251,6 +252,16 @@ class Parcalar(unittest.TestCase):
         # Parça 1 başarısız: b için önceki kayıt korunur
         onceki = {"dergiler": [{"id": "b", "v": "onceki-b"}]}
         self.assertEqual([d["v"] for d in parca_birlestir.birlestir([p0], onceki)], ["yeni-a", "onceki-b"])
+
+
+class Sifreleme(unittest.TestCase):
+    def test_gidip_donme(self):
+        veri = json.dumps({"dergiler": [{"ad": "Örnek"}]}, ensure_ascii=False).encode()
+        paket = sifrele.sifrele(veri, "dogru-parola")
+        self.assertNotIn("Örnek", json.dumps(paket))
+        self.assertEqual(sifrele.coz(paket, "dogru-parola"), veri)
+        with self.assertRaises(Exception):
+            sifrele.coz(paket, "yanlis-parola")
 
 
 class Uluslararasi(unittest.TestCase):

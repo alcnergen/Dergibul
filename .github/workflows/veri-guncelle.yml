@@ -35,17 +35,27 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - run: pip install -q cryptography
+      - name: Önceki veriyi çöz
+        env:
+          DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
+        run: python3 scripts/sifrele.py coz
       - name: TR Dizin listesini çek ve bu parçadaki dergileri ölç
         run: |
           mkdir -p parca
           python3 scripts/trdizin_guncelle.py --parca ${{ matrix.parca }}/8 --bekleme 1.0 \
             --cikti parca/parca-${{ matrix.parca }}.json \
             --onbellek-cikti parca/onbellek-${{ matrix.parca }}.json
+      # Public depoda artifact'ları herkes indirebilir: yalnızca şifreli hali yüklenir
+      - name: Parçayı şifrele
+        env:
+          DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
+        run: python3 scripts/sifrele.py sifrele --duz-sil parca/*.json
       - uses: actions/upload-artifact@v4
         with:
           name: parca-${{ matrix.parca }}
-          path: parca/
-          retention-days: 3
+          path: parca/*.enc.json
+          retention-days: 1
 
   birlestir:
     needs: olc
@@ -63,6 +73,13 @@ jobs:
         with:
           pattern: parca-*
           path: parcalar
+      - run: pip install -q cryptography
+      - name: Önceki veriyi ve parçaları çöz
+        env:
+          DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
+        run: |
+          python3 scripts/sifrele.py coz
+          python3 scripts/sifrele.py coz $(find parcalar -name '*.enc.json')
 
       - name: Yurtdışı listesi (SJR + Web of Science dosyaları)
         run: |
@@ -81,11 +98,18 @@ jobs:
       - name: Parçaları birleştir
         run: python3 scripts/parca_birlestir.py parcalar
 
+      - name: Şifrele
+        env:
+          DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
+        run: python3 scripts/sifrele.py sifrele
+
       - name: Değişiklikleri kaydet
         run: |
           git config user.name "dergibul-bot"
           git config user.email "dergibul-bot@users.noreply.github.com"
-          git add data/*.json data/kaynak/makale_onbellek.json
+          # Düz veri depoda tutulmaz (.gitignore); daha önce izleniyorsa izlemeyi bırak
+          git rm -q --cached --ignore-unmatch data/trdizin.json data/uluslararasi.json data/kaynak/makale_onbellek.json
+          git add -A data
           git diff --cached --quiet || git commit -m "Veri güncellemesi $(date -u +%F)"
           git pull --rebase origin main
           git push origin HEAD:main

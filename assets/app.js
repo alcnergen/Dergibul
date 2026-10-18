@@ -14,10 +14,76 @@
   const durum = { tr: null, ul: null, varsayilan: {}, sekme: "trdizin" };
   const $ = (s) => document.querySelector(s);
 
-  async function veriYukle(ad) {
-    const yanit = await fetch("data/" + ad + ".json", { cache: "no-cache" });
-    if (!yanit.ok) throw new Error(ad + ".json yüklenemedi");
-    return yanit.json();
+  const PAROLA_ANAHTARI = "dergibul-parola";
+
+  async function jsonGetir(yol) {
+    const yanit = await fetch(yol, { cache: "no-cache" });
+    return yanit.ok ? yanit.json() : null;
+  }
+
+  // scripts/sifrele.py ile şifrelenmiş paketi çözer: PBKDF2-SHA256 -> AES-256-GCM -> gzip -> JSON
+  async function paketiCoz(paket, parola) {
+    const b = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+    const temel = await crypto.subtle.importKey("raw", new TextEncoder().encode(parola), "PBKDF2", false, ["deriveKey"]);
+    const anahtar = await crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt: b(paket.tuz), iterations: paket.tekrar, hash: "SHA-256" },
+      temel, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+    const acik = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b(paket.iv) }, anahtar, b(paket.veri));
+    let akis = new Blob([acik]).stream();
+    if (paket.sikistirma === "gzip") akis = akis.pipeThrough(new DecompressionStream("gzip"));
+    return JSON.parse(await new Response(akis).text());
+  }
+
+  // Şifreli dosya varsa parola gerekir; yoksa (yerel geliştirme) düz JSON okunur
+  async function veriYukle(ad, parola) {
+    const paket = await jsonGetir("data/" + ad + ".enc.json");
+    if (paket) {
+      if (!parola) throw Object.assign(new Error("parola gerekli"), { parolaGerekli: true });
+      return paketiCoz(paket, parola);
+    }
+    const duz = await jsonGetir("data/" + ad + ".json");
+    if (!duz) throw new Error(ad + " verisi bulunamadı");
+    return duz;
+  }
+
+  function kayitliParola() {
+    try { return sessionStorage.getItem(PAROLA_ANAHTARI) || localStorage.getItem(PAROLA_ANAHTARI); } catch (e) { return null; }
+  }
+
+  function parolayiKaydet(parola, kalici) {
+    try {
+      sessionStorage.setItem(PAROLA_ANAHTARI, parola);
+      if (kalici) localStorage.setItem(PAROLA_ANAHTARI, parola);
+    } catch (e) { /* depo kapalı: her açılışta parola sorulur */ }
+  }
+
+  function parolayiUnut() {
+    try { sessionStorage.removeItem(PAROLA_ANAHTARI); localStorage.removeItem(PAROLA_ANAHTARI); } catch (e) { /* depo kapalı */ }
+  }
+
+  async function verileriAc(parola) {
+    const [tr, ul] = await Promise.all([veriYukle("trdizin", parola), veriYukle("uluslararasi", parola)]);
+    durum.tr = tr; durum.ul = ul; durum.varsayilan = { tr, ul };
+  }
+
+  // Giriş ekranı: doğru parola girilene kadar bekler
+  function girisBekle() {
+    $("#giris").hidden = false;
+    return new Promise((coz) => {
+      $("#giris-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const parola = $("#parola").value;
+        $("#giris-hata").textContent = "Açılıyor…";
+        try {
+          await verileriAc(parola);
+          parolayiKaydet(parola, $("#hatirla").checked);
+          $("#giris").hidden = true;
+          coz();
+        } catch (hata) {
+          $("#giris-hata").textContent = hata.name === "OperationError" ? "Parola yanlış." : "Veri açılamadı: " + hata.message;
+        }
+      });
+    });
   }
 
   // Basit CSV okuyucu: tırnaklı alanları destekler. Liste sütunlarında ayraç "|".
@@ -299,12 +365,20 @@
 
   async function basla() {
     try {
-      const [tr, ul] = await Promise.all([veriYukle("trdizin"), veriYukle("uluslararasi")]);
-      durum.tr = tr; durum.ul = ul; durum.varsayilan = { tr, ul };
+      await verileriAc(kayitliParola());
     } catch (e) {
-      $("#tr-liste").append(el("div", "bos", "Veri yüklenemedi: " + e.message + ". Siteyi bir web sunucusu üzerinden açın (README)."));
-      return;
+      if (e.parolaGerekli || e.name === "OperationError") {
+        parolayiUnut();
+        await girisBekle();
+      } else {
+        $("#icerik").hidden = false;
+        $("#tr-liste").append(el("div", "bos", "Veri yüklenemedi: " + e.message + ". Siteyi bir web sunucusu üzerinden açın (README)."));
+        return;
+      }
     }
+    $("#icerik").hidden = false;
+    $("#cikis").hidden = !kayitliParola();
+    $("#cikis").addEventListener("click", () => { parolayiUnut(); location.reload(); });
     // Daha önce bu tarayıcıda yüklenen dosyalar
     ["tr", "ul"].forEach((k) => {
       const v = depodanOku(k);

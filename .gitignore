@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
 data/kaynak/scimagojr.csv
+# Düz veri yalnızca iş akışı içinde çözülür; depoda ve sitede şifreli kopyalar (*.enc.json) durur
+data/trdizin.json
+data/uluslararasi.json
+data/kaynak/makale_onbellek.json
