@@ -47,15 +47,16 @@ jobs:
             --cikti parca/parca-${{ matrix.parca }}.json \
             --onbellek-cikti parca/onbellek-${{ matrix.parca }}.json
       # Public depoda artifact'ları herkes indirebilir: yalnızca şifreli hali yüklenir
-      - name: Parçayı şifrele
+      - name: Parçayı şifrele (parola tanımlıysa)
         env:
           DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
-        run: python3 scripts/sifrele.py sifrele --duz-sil parca/*.json
+        run: |
+          if [ -n "$DERGIBUL_PAROLA" ]; then python3 scripts/sifrele.py sifrele --duz-sil parca/*.json; fi
       - uses: actions/upload-artifact@v4
         with:
           name: parca-${{ matrix.parca }}
-          path: parca/*.enc.json
-          retention-days: 1
+          path: parca/
+          retention-days: 3
 
   birlestir:
     needs: olc
@@ -79,7 +80,8 @@ jobs:
           DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
         run: |
           python3 scripts/sifrele.py coz
-          python3 scripts/sifrele.py coz $(find parcalar -name '*.enc.json')
+          SIFRELI=$(find parcalar -name '*.enc.json')
+          if [ -n "$SIFRELI" ]; then python3 scripts/sifrele.py coz $SIFRELI; fi
 
       - name: Yurtdışı listesi (SJR + Web of Science dosyaları)
         run: |
@@ -98,18 +100,7 @@ jobs:
       - name: Parçaları birleştir
         run: python3 scripts/parca_birlestir.py parcalar
 
-      - name: Şifrele
+      - name: Kaydet
         env:
           DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
-        run: python3 scripts/sifrele.py sifrele
-
-      - name: Değişiklikleri kaydet
-        run: |
-          git config user.name "dergibul-bot"
-          git config user.email "dergibul-bot@users.noreply.github.com"
-          # Düz veri depoda tutulmaz (.gitignore); daha önce izleniyorsa izlemeyi bırak
-          git rm -q --cached --ignore-unmatch data/trdizin.json data/uluslararasi.json data/kaynak/makale_onbellek.json
-          git add -A data
-          git diff --cached --quiet || git commit -m "Veri güncellemesi $(date -u +%F)"
-          git pull --rebase origin main
-          git push origin HEAD:main
+        run: scripts/kaydet.sh

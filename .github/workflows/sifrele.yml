@@ -28,16 +28,9 @@ jobs:
         env:
           DERGIBUL_PAROLA: ${{ secrets.ESKI_PAROLA || secrets.DERGIBUL_PAROLA }}
         run: python3 scripts/sifrele.py coz
-      - name: Şifrele
+      - name: Şifrele ve kaydet
         env:
           DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
-        run: python3 scripts/sifrele.py sifrele
-      - name: Kaydet
         run: |
-          git config user.name "dergibul-bot"
-          git config user.email "dergibul-bot@users.noreply.github.com"
-          git rm -q --cached --ignore-unmatch data/trdizin.json data/uluslararasi.json data/kaynak/makale_onbellek.json
-          git add -A data
-          git diff --cached --quiet || git commit -m "Veri şifrelendi"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          if [ -z "$DERGIBUL_PAROLA" ]; then echo "::error::Önce DERGIBUL_PAROLA sırrını tanımlayın."; exit 1; fi
+          scripts/kaydet.sh "Veri şifrelendi"

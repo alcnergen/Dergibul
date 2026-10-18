@@ -60,10 +60,14 @@ def main():
     ap.add_argument("--duz-sil", action="store_true", help="şifreledikten sonra düz dosyayı sil")
     args = ap.parse_args()
     parola = os.environ.get("DERGIBUL_PAROLA", "")
+    hedefler = args.dosyalar or DOSYALAR
+    if args.islem == "coz" and not args.dosyalar and not any(sifreli_yol(KOK / y).exists() for y in DOSYALAR):
+        print("Şifreli veri yok; çözülecek bir şey yok.")
+        return
     if len(parola) < 8:
         sys.exit("DERGIBUL_PAROLA tanımlı değil ya da 8 karakterden kısa. GitHub: Settings → Secrets and "
                  "variables → Actions → New repository secret.")
-    for yol in args.dosyalar or DOSYALAR:
+    for yol in hedefler:
         duz = Path(yol) if args.dosyalar else KOK / yol
         if args.islem == "coz" and str(duz).endswith(".enc.json"):
             duz = Path(str(duz)[: -len(".enc.json")] + ".json")
