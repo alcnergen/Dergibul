@@ -67,7 +67,18 @@
   }
 
   // Giriş ekranı: doğru parola girilene kadar bekler
+  // Giriş ekranında her açılışta rastgele bir düşünür sözü
+  function sozGoster() {
+    const sozler = window.DERGIBUL_SOZLER || [];
+    if (!sozler.length) return;
+    const [metin, sahibi] = sozler[Math.floor(Math.random() * sozler.length)];
+    $("#soz-metin").textContent = "“" + metin + "”";
+    $("#soz-sahibi").textContent = "— " + sahibi;
+    $("#soz").hidden = false;
+  }
+
   function girisBekle() {
+    sozGoster();
     $("#giris").hidden = false;
     return new Promise((coz) => {
       $("#giris-form").addEventListener("submit", async (e) => {
