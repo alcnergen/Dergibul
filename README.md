@@ -24,13 +24,18 @@ python3 -m http.server 8000   # sonra http://localhost:8000
 ### 1. TR Dizin listesi (tamamen otomatik)
 
 ```bash
-python3 scripts/trdizin_guncelle.py --max-dergi 100
+python3 scripts/trdizin_guncelle.py            # tüm dergiler; --max-dergi 20 ile deneme
 ```
 
 Bu komut elle giriş gerektirmeden şu adımları izler:
 
 1. **Liste:** Dizindeki tüm dergileri `search.trdizin.gov.tr` sitesinin herkese açık JSON API'sinden sayfa sayfa çeker. Dizinden çıkarılmış ya da pasif görünen dergileri atlar. Gelen dergi sayısı beklenenden çok azsa (API kesintisi gibi) mevcut listeyi silmez, durur.
-2. **DergiPark adresi:** TR Dizin kaydındaki adres kullanılır (`dergipark.org.tr/slug` kısa biçimleri de çözülür). Kayıt derginin kendi sitesini gösteriyorsa o sitedeki DergiPark bağlantısı aranır.
+2. **DergiPark adresi:** Bulmak için sırayla şunlar denenir:
+   - TR Dizin kaydındaki adres (`dergipark.org.tr/slug` kısa biçimleri de çözülür).
+   - Kayıt derginin kendi sitesini gösteriyorsa o sitedeki DergiPark bağlantısı.
+   - O da yoksa derginin Crossref'teki DOI kayıtlarının adresi.
+
+   DergiPark'ta hiç bulunmayan dergiler için süreler ve yayın sıklığı Crossref kayıtlarındaki *received / accepted / published* tarihlerinden hesaplanır. Bu dergiler sitede **"DergiPark'ta yok"** ve **"Süreler: Crossref"** etiketleriyle gösterilir.
 3. **Sıklık, doluluk ve gönderim durumu:** DergiPark ana sayfasından şunları okur:
    - yayın ayları ("Yayın Modeli: Süreli Yayın (Ocak - Mayıs - Eylül)" → yılda 3 sayı)
    - "Makale Gönderimine Açık/Kapalı" durumu ve "makale kabulü 31 Ocak 2027'ye kadar kapalı" gibi açılış tarihleri. Açılış tarihi biliniyorsa tahmin o tarihten başlatılır, bilinmiyorsa dergi "şu an kapalı" olarak işaretlenir.
@@ -38,7 +43,7 @@ Bu komut elle giriş gerektirmeden şu adımları izler:
 4. **Resmî istatistikler:** DergiPark "Kabul-Ret İstatistikleri" sayfasından en güncel yılın kabul oranı ile gönderimden kabul/ret kararına ortalama süreler okunur (`kabulOrani`, `ortIlkKararGun`, `resmiKabulGun`). Kabul oranı %20'nin altındaysa sitede uyarı gösterilir.
 5. **Süreler:** Son 4 sayıdan, her sayıda 6 makale inceler. Makale sayfalarındaki **Gönderilme / Kabul / Yayımlanma** tarihlerinden ortalama süreleri hesaplar. Sıklık başka yerden bulunamazsa sayıların yayın aralıklarından tahmin eder. Kabul edilen çalışma türlerini de bu makalelerin türlerinden çıkarır.
 
-Her çalıştırmada en uzun süredir ölçülmemiş dergiler önce ele alınır, diğerlerinin önceki ölçümleri korunur. Böylece TR Dizin'deki yaklaşık 1.350 aktif dergi birkaç günlük otomatik çalıştırmayla ölçülür ve sitelere fazla yük binmez.
+Yerelde `--max-dergi N` ile yalnızca en uzun süredir ölçülmemiş N dergi, `--parca i/n` ile listenin bir parçası ölçülebilir.
 
 TR Dizin API'si dergi kayıtlarının alan adlarını belgelemiyor. Bu yüzden kayıtlar alan adlarına değil, anlamlarına göre (issn, publisher, subject, period…) eşlenir. Eşlemeyi kontrol etmek için:
 
@@ -76,7 +81,7 @@ python3 scripts/uluslararasi_guncelle.py \
 
 ### 3. Otomatik güncelleme
 
-`.github/workflows/veri-guncelle.yml` her gün şu adımları çalıştırır (her çalıştırmada 150 dergi ölçülür, tüm liste yaklaşık 9 günde dolar):
+`.github/workflows/veri-guncelle.yml` **her gece tüm aktif dergileri** yeniden ölçer. Liste 8 parçaya bölünür ve parçalar ayrı makinelerde paralel çalışır. Daha önce ölçülen makalelerin tarihleri `data/kaynak/makale_onbellek.json` dosyasında tutulduğu için yeniden indirilmez; ilk geceden sonra iş yaklaşık yarım saat sürer. Adımlar:
 
 1. SJR verisini indirmeyi dener.
 2. `data/kaynak/wos/*.csv` dosyalarını okur.

@@ -10,6 +10,8 @@ from unittest import mock  # noqa: E402
 
 import ortak  # noqa: E402
 import trdizin_api as api  # noqa: E402
+import crossref  # noqa: E402
+import parca_birlestir  # noqa: E402
 import trdizin_guncelle as tr  # noqa: E402
 import uluslararasi_guncelle as ul  # noqa: E402
 
@@ -184,13 +186,64 @@ class UcuncuUc(unittest.TestCase):
         with tempfile.TemporaryDirectory() as k, \
                 mock.patch.object(tr.Getirici, "getir", side_effect=getir), \
                 mock.patch.object(sys, "argv", ["x", "--cikti", f"{k}/c.json", "--duzeltmeler", f"{k}/yok.csv",
-                                                   "--min-dergi", "1"]), \
+                                                   "--min-dergi", "1",
+                                                   "--onbellek", f"{k}/onbellek.json"]), \
                 mock.patch.object(tr, "date", mock.Mock(today=lambda: date(2026, 10, 18))):
             tr.main()
             d = json.loads(Path(k, "c.json").read_text())["dergiler"][0]
         self.assertEqual((d["dergipark"], d["yillikSayi"], d["ortToplamGun"]), (dp, 3, 90))
         self.assertEqual(d["kabulEdilenTurler"], ["arastirma"])
         self.assertEqual((d["ilkBosSayi"], d["ilkBosSayiKaynak"]), ("2030", "dergi duyurusu"))
+
+
+class Crossref(unittest.TestCase):
+    def test_ozet(self):
+        kayitlar = [
+            {"volume": "5", "issue": "1", "published-online": {"date-parts": [[2025, 3, 1]]},
+             "assertion": [{"name": "received", "value": "2024-11-01"}, {"name": "accepted", "value": "1 February 2025"}]},
+            {"volume": "5", "issue": "2", "published": {"date-parts": [[2025, 7, 1]]},
+             "accepted": {"date-parts": [[2025, 5, 1]]}},
+            {"volume": "5", "issue": "3", "issued": {"date-parts": [[2025, 11]]}},
+        ]
+        s = crossref.ozetle(kayitlar, bugun=date(2026, 10, 18))
+        self.assertEqual(s["veriKaynagi"], "Crossref")
+        self.assertEqual(s["ortToplamGun"], 120)
+        self.assertEqual(s["ortKabulYayinGun"], round((28 + 61) / 2))
+        self.assertEqual((s["tahminiYillikSayi"], s["sonYayin"]), (3, "2025-11-01"))
+        self.assertNotIn("dergiparkCrossref", s)
+
+    def test_dergipark_adresi(self):
+        k = {"resource": {"primary": {"URL": "https://dergipark.org.tr/tr/pub/jmr/article/123"}}}
+        url = crossref.ozetle([k])["dergiparkCrossref"]
+        self.assertEqual(tr.dergipark_kok(url), "https://dergipark.org.tr/tr/pub/jmr")
+        self.assertIsNone(tr.dergipark_kok("https://dergipark.org.tr/tr/download/article-file/9"))
+
+
+class Onbellek(unittest.TestCase):
+    def test_makale_tekrar_indirilmez(self):
+        dp = KOK
+        sayfalar = {f"{dp}/archive": f'<a href="{dp}/issue/1">', f"{dp}/issue/1": f'<a href="{dp}/article/9">',
+                    f"{dp}/article/9": "Gönderilme Tarihi 01.01.2026 Kabul Tarihi 01.02.2026 Yayımlanma Tarihi 01.03.2026"}
+        g = mock.Mock()
+        g.getir.side_effect = lambda url: sayfalar.get(url)
+        onbellek = {}
+        ilk = tr.dergi_olc(g, dp, 4, 6, onbellek)
+        self.assertIn(f"{dp}/article/9", onbellek)
+        g.getir.reset_mock()
+        ikinci = tr.dergi_olc(g, dp, 4, 6, onbellek)
+        self.assertNotIn(mock.call(f"{dp}/article/9"), g.getir.call_args_list)
+        self.assertEqual(ilk, ikinci)
+
+
+class Parcalar(unittest.TestCase):
+    def test_birlestir(self):
+        p0 = {"dergiler": [{"id": "a", "olcumParca": "0/2", "v": "yeni-a"}, {"id": "b", "v": "eski-b"}]}
+        p1 = {"dergiler": [{"id": "a", "v": "eski-a"}, {"id": "b", "olcumParca": "1/2", "v": "yeni-b"},
+                           {"id": "c", "v": "liste-c"}]}
+        self.assertEqual([d["v"] for d in parca_birlestir.birlestir([p0, p1], {})], ["yeni-a", "yeni-b", "liste-c"])
+        # Parça 1 başarısız: b için önceki kayıt korunur
+        onceki = {"dergiler": [{"id": "b", "v": "onceki-b"}]}
+        self.assertEqual([d["v"] for d in parca_birlestir.birlestir([p0], onceki)], ["yeni-a", "onceki-b"])
 
 
 class Uluslararasi(unittest.TestCase):

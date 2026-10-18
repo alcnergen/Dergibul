@@ -19,12 +19,14 @@ import argparse
 import re
 import statistics
 import sys
+import zlib
 from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ortak import (Getirici, csv_oku, etiketli_tarih, html_metin, issn_normal, json_oku,  # noqa: E402
                    json_yaz, kucuk, liste, sayi, tarih_bul)
+from crossref import crossref_olc  # noqa: E402
 from trdizin_api import kayit_normallestir, periyot_coz, tum_dergiler  # noqa: E402
 
 KOK = Path(__file__).resolve().parent.parent
@@ -44,7 +46,8 @@ TUR_ESLEME = [
 
 # DergiPark'ta dergi kısa adı olamayacak genel yollar
 AYRILMIS_YOLLAR = {"tr", "en", "pub", "page", "search", "journal", "journals", "login", "register",
-                   "help", "about", "static", "public", "user", "article", "issue", "archive"}
+                   "help", "about", "static", "public", "user", "article", "issue", "archive", "download",
+                   "doi", "api", "explore", "subjects", "announcement", "trends"}
 
 
 def dergipark_kok(deger):
@@ -128,7 +131,19 @@ def sureleri_hesapla(makaleler, sayi_tarihleri):
     return sonuc
 
 
-def dergi_olc(getirici, kok, sayi_adedi, makale_adedi):
+def _onbellekten(kayit):
+    return {k: (date.fromisoformat(kayit[k]) if kayit.get(k) else None) for k in ("gonderim", "kabul", "yayin")} | {
+        "tur": kayit.get("tur")}
+
+
+def _onbellege(olcum):
+    return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in olcum.items() if v}
+
+
+def dergi_olc(getirici, kok, sayi_adedi, makale_adedi, onbellek=None):
+    """Son sayılardaki makaleleri ölçer. Yayımlanmış makalenin tarihleri değişmediği için
+    `onbellek` (url -> tarihler) içindeki makaleler yeniden indirilmez."""
+    onbellek = {} if onbellek is None else onbellek
     arsiv = getirici.getir(f"{kok}/archive")
     if not arsiv:
         return None
@@ -139,9 +154,15 @@ def dergi_olc(getirici, kok, sayi_adedi, makale_adedi):
             continue
         bu_sayi = []
         for url in makale_baglantilari(sayi_html, kok)[:makale_adedi]:
+            if url in onbellek:
+                bu_sayi.append(_onbellekten(onbellek[url]))
+                continue
             html = getirici.getir(url)
             if html:
-                bu_sayi.append(makale_olc(html))
+                olcum = makale_olc(html)
+                bu_sayi.append(olcum)
+                if olcum["yayin"]:
+                    onbellek[url] = _onbellege(olcum)
         yayinlar = [m["yayin"] for m in bu_sayi if m["yayin"]]
         if yayinlar:
             sayi_tarihleri.append(statistics.median_low(yayinlar))
@@ -281,7 +302,7 @@ def olcumu_uygula(dergi, olcum):
     if not dergi["ilkBosSayi"] and olcum.get("ilkBosSayi"):
         dergi["ilkBosSayi"] = olcum["ilkBosSayi"]
         dergi["ilkBosSayiKaynak"] = olcum.get("ilkBosSayiKaynak")
-    for k in ("kabulOrani", "kabulOraniYil", "degerlendirilenMakale", "resmiKabulGun"):
+    for k in ("kabulOrani", "kabulOraniYil", "degerlendirilenMakale", "resmiKabulGun", "veriKaynagi", "sonYayin"):
         if olcum.get(k) is not None:
             dergi[k] = olcum[k]
     if not dergi.get("ortIlkKararGun") and olcum.get("ortIlkKararGun"):
@@ -324,6 +345,42 @@ def wos_etiketle(dergiler, uluslararasi):
         d["endeksler"] = sorted(set(d["endeksler"]) | ek)
 
 
+def dergiyi_olc(getirici, getirici_cr, d, args, onbellek, bugun):
+    """Tek dergiyi ölçer: DergiPark varsa oradan, yoksa Crossref'ten."""
+    # Duyurudan gelen bilgiler her ölçümde yeniden okunur; eskisi kalmasın
+    for k in ("gonderimKapali", "gonderimAcilis", "veriKaynagi"):
+        d.pop(k, None)
+    if d.get("ilkBosSayiKaynak") == "dergi duyurusu":
+        d["ilkBosSayi"] = None
+        del d["ilkBosSayiKaynak"]
+    d["olcumTarihi"] = bugun
+    if not d["dergipark"]:
+        d["dergipark"] = dergipark_bul(getirici, d)
+    if not d["dergipark"]:
+        cr = crossref_olc(getirici_cr, [d["issn"], d.get("eissn")])
+        if cr and cr.get("dergiparkCrossref"):
+            d["dergipark"] = dergipark_kok(cr["dergiparkCrossref"])
+        elif cr:
+            print(f"  DergiPark'ta yok; Crossref: {cr.get('olcumMakaleSayisi', 0)} makale")
+            olcumu_uygula(d, cr)
+            d["dogrulandi"] = bool(cr.get("ortToplamGun") or cr.get("ortKabulYayinGun"))
+            return
+        if not d["dergipark"]:
+            print("  DergiPark'ta yok; Crossref'te de kayıt yok")
+            return
+    d["url"] = d["url"] or d["dergipark"]
+    olcum = dergi_olc(getirici, d["dergipark"], args.sayi, args.makale, onbellek) or {}
+    html = getirici.getir(d["dergipark"])
+    if html:
+        olcum |= {k: v for k, v in anasayfa_coz(html).items() if k not in olcum}
+    html = getirici.getir(d["dergipark"] + "/rejection-statistics")
+    if html:
+        olcum |= istatistik_coz(html)
+    olcum["olcumTarihi"] = bugun
+    olcum["veriKaynagi"] = "DergiPark"
+    olcumu_uygula(d, olcum)
+
+
 def onceki_olcum(onceki):
     """Önceki çalıştırmanın kaydını olcumu_uygula'nın beklediği biçime çevirir."""
     o = dict(onceki)
@@ -338,7 +395,12 @@ def main():
     ap.add_argument("--girdi", help="TR Dizin API'si yerine bu CSV'den oku (çevrimdışı kullanım)")
     ap.add_argument("--duzeltmeler", default=KOK / "data/kaynak/duzeltmeler.csv")
     ap.add_argument("--cikti", default=KOK / "data/trdizin.json")
-    ap.add_argument("--max-dergi", type=int, default=100, help="bu çalıştırmada ölçülecek en fazla dergi")
+    ap.add_argument("--max-dergi", type=int, default=0,
+                    help="ölçülecek en fazla dergi (0: hepsi; en uzun süredir ölçülmeyenler önce)")
+    ap.add_argument("--parca", help="i/n: yalnızca bu parçaya düşen dergileri ölç (paralel iş için, ör. 3/8)")
+    ap.add_argument("--onbellek", default=KOK / "data/kaynak/makale_onbellek.json",
+                    help="makale tarih önbelleği (okunur ve güncellenerek yazılır)")
+    ap.add_argument("--onbellek-cikti", help="önbelleği başka dosyaya yaz (varsayılan: --onbellek)")
     ap.add_argument("--sayi", type=int, default=4, help="dergi başına incelenecek son sayı adedi")
     ap.add_argument("--makale", type=int, default=6, help="sayı başına incelenecek makale adedi")
     ap.add_argument("--min-dergi", type=int, default=50,
@@ -382,45 +444,34 @@ def main():
             olcumu_uygula(d, onceki_olcum(onceki))
         dergiler.append(d)
 
-    # En uzun süredir ölçülmeyenler önce
-    sira = sorted(dergiler, key=lambda d: d.get("olcumTarihi") or "")[: args.max_dergi]
+    if args.parca:
+        no, toplam = (int(x) for x in args.parca.split("/"))
+        sira = [d for d in dergiler if zlib.crc32(d["id"].encode()) % toplam == no]
+    else:
+        sira = sorted(dergiler, key=lambda d: d.get("olcumTarihi") or "")
+    if args.max_dergi:
+        sira = sira[: args.max_dergi]
+    onbellek = json_oku(args.onbellek, {}) or {}
+    getirici_cr = Getirici(bekleme=0.2)  # Crossref ayrı sunucu; DergiPark beklemesini bölmesin
     bugun = date.today().isoformat()
     for i, d in enumerate(sira, 1):
         print(f"[{i}/{len(sira)}] {d['ad']}")
-        # Duyurudan gelen bilgiler her ölçümde yeniden okunur; eskisi kalmasın
-        d.pop("gonderimKapali", None)
-        d.pop("gonderimAcilis", None)
-        if d.get("ilkBosSayiKaynak") == "dergi duyurusu":
-            d["ilkBosSayi"] = None
-            del d["ilkBosSayiKaynak"]
-        if not d["dergipark"]:
-            d["dergipark"] = dergipark_bul(getirici, d)
-            if not d["dergipark"]:
-                print("  DergiPark adresi bulunamadı")
-                d["olcumTarihi"] = bugun  # sıranın sonuna at, sonraki turda tekrar denenir
-                continue
-            d["url"] = d["url"] or d["dergipark"]
-        olcum = dergi_olc(getirici, d["dergipark"], args.sayi, args.makale) or {}
-        html = getirici.getir(d["dergipark"])
-        if html:
-            olcum |= {k: v for k, v in anasayfa_coz(html).items() if k not in olcum}
-        html = getirici.getir(d["dergipark"] + "/rejection-statistics")
-        if html:
-            olcum |= istatistik_coz(html)
-        olcum["olcumTarihi"] = bugun
-        olcumu_uygula(d, olcum)
+        dergiyi_olc(getirici, getirici_cr, d, args, onbellek, bugun)
+        d["olcumParca"] = args.parca
 
     for d in dergiler:
         d.setdefault("dogrulandi", False)
     wos_etiketle(dergiler, json_oku(KOK / "data/uluslararasi.json"))
 
+    json_yaz(args.onbellek_cikti or args.onbellek, onbellek)
     json_yaz(args.cikti, {
         "meta": {
             "ornek": False,
             "guncelleme": bugun,
-            "kaynak": kaynak + " + DergiPark makale tarihleri",
+            "kaynak": kaynak + " + DergiPark + Crossref",
             "dergiSayisi": len(dergiler),
             "olculenDergi": sum(1 for d in dergiler if d.get("olcumMakaleSayisi")),
+            "parca": args.parca,
         },
         "dergiler": dergiler,
     })
