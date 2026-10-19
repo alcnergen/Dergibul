@@ -101,7 +101,7 @@
     }
     let konu = null;
     if (calisma.konu && calisma.konu.length) {
-      konu = konuEslesme(dergi, calisma.konu);
+      konu = konuEslesme(dergi, calisma.konu, calisma.konuAnlam);
       if (!konu.veriVar) engeller.push("Konu verisi henüz yok");
       else if (!konu.makale && !konu.anahtar.length) engeller.push("Konu eşleşmesi yok");
     }
@@ -240,7 +240,7 @@
    * Konu eşleşmesi. terimler: ["göç", "aşırı sağ"] (herhangi biri eşleşirse yeter).
    * Dönüş: { veriVar, makale (eşleşen başlık sayısı), toplam, anahtar[], terimler{terim: sayı}, ornek }
    */
-  function konuEslesme(dergi, terimler) {
+  function konuEslesme(dergi, terimler, anlamEslesmeleri) {
     const basliklar = (dergi.basliklar || []).map(sadelestir);
     const anahtarlar = dergi.anahtarKelimeler || [];
     const sonuc = { veriVar: konuVerisiVar(dergi), makale: 0, toplam: basliklar.length, anahtar: [], terimler: {}, ornek: null };
@@ -259,6 +259,13 @@
     });
     sonuc.makale = eslesenBaslik.size;
     if (eslesenBaslik.size) sonuc.ornek = dergi.basliklar[Math.min(...eslesenBaslik)];
+    // Yapay zekâ ile anlamca yakın bulunan başlıklar (varsa): kelime eşleşmesi olmasa da konuya yakındır
+    const anlam = anlamEslesmeleri && anlamEslesmeleri[dergi.id];
+    if (anlam && anlam.makale > sonuc.makale) {
+      sonuc.anlam = anlam.makale - sonuc.makale;
+      sonuc.makale = anlam.makale;
+      sonuc.ornek = sonuc.ornek || anlam.ornek;
+    }
     return sonuc;
   }
 
@@ -316,6 +323,77 @@
       delete x.puan;
     });
     return sonuc.slice(0, secenek.enFazla);
+  }
+
+  /* ---------- Yapay zekâ ile anlam araması ----------
+   * Yayın sırasında her derginin en yeni başlıkları çok dilli bir anlam modeliyle 384 boyutlu vektörlere
+   * çevrilir (int8). Tarayıcı aynı modelle aramayı vektöre çevirir; kosinüs benzerliği başlık başına hesaplanır.
+   * Böylece "mülteci entegrasyonu" araması "Suriyeli göçmenlerin toplumsal uyumu" başlığını da bulur.
+   */
+  const ANLAM_ESIK = { cokYuksek: 0.6, yuksek: 0.5, orta: 0.4, konu: 0.5 };
+
+  function anlamPaketi(ham, dergiler) {
+    const ikili = typeof atob === "function" ? atob(ham.vektor) : Buffer.from(ham.vektor, "base64").toString("binary");
+    const v = new Int8Array(ikili.length);
+    for (let i = 0; i < ikili.length; i++) v[i] = (ikili.charCodeAt(i) << 24) >> 24;
+    const yer = new Map();
+    let bas = 0;
+    ham.dergiler.forEach(([id, n]) => { yer.set(String(id), { bas, n }); bas += n; });
+    const dizin = new Map((dergiler || []).map((d) => [String(d.id), d]));
+    return { boyut: ham.boyut, v, yer, dizin, guncelleme: ham.guncelleme };
+  }
+
+  // Bir derginin başlıklarının sorgu vektörüne benzerlikleri: [[başlık sırası, benzerlik], ...] azalan
+  function baslikBenzerlikleri(paket, id, q) {
+    const y = paket.yer.get(String(id));
+    if (!y) return [];
+    const d = paket.boyut, sonuc = [];
+    for (let i = 0; i < y.n; i++) {
+      let s = 0;
+      const o = (y.bas + i) * d;
+      for (let k = 0; k < d; k++) s += paket.v[o + k] * q[k];
+      sonuc.push([i, s / 127]);
+    }
+    return sonuc.sort((a, b) => b[1] - a[1]);
+  }
+
+  function anlamSeviyesi(enIyi) {
+    return enIyi >= ANLAM_ESIK.cokYuksek ? "Çok yüksek" : enIyi >= ANLAM_ESIK.yuksek ? "Yüksek" : enIyi >= ANLAM_ESIK.orta ? "Orta" : "Düşük";
+  }
+
+  /*
+   * Makale metnine anlamca en yakın dergiler. q: normalize edilmiş sorgu vektörü (Float32Array).
+   * Dergi puanı en benzer üç başlığın benzerliği (1 + 1/2 + 1/4 ağırlıkla).
+   */
+  function anlamselOner(dergiler, paket, q, secenek) {
+    secenek = Object.assign({ enFazla: 20 }, secenek);
+    return dergiler.map((d) => {
+      const b = baslikBenzerlikleri(paket, d.id, q);
+      if (!b.length) return null;
+      const puan = b[0][1] + (b[1] ? b[1][1] / 2 : 0) + (b[2] ? b[2][1] / 4 : 0);
+      return { dergi: d, benzerlik: b[0][1], puan, seviye: anlamSeviyesi(b[0][1]),
+        benzerBasliklar: b.slice(0, 2).filter((x) => x[1] >= ANLAM_ESIK.orta).map((x) => d.basliklar[x[0]]) };
+    }).filter(Boolean).sort((a, b) => b.puan - a.puan).slice(0, secenek.enFazla);
+  }
+
+  /*
+   * Konu kutusundaki terimlere anlamca yakın başlıklar: { dergiId: { makale, ornek } }.
+   * terimVektorleri: [Float32Array, ...]; eşik ANLAM_ESIK.konu.
+   */
+  function anlamKonuEslesmeleri(dergiler, paket, terimVektorleri, esik) {
+    esik = esik || ANLAM_ESIK.konu;
+    const sonuc = {};
+    dergiler.forEach((d) => {
+      const eslesen = new Map();
+      terimVektorleri.forEach((q) => baslikBenzerlikleri(paket, d.id, q).forEach(([i, s]) => {
+        if (s >= esik && (!eslesen.has(i) || eslesen.get(i) < s)) eslesen.set(i, s);
+      }));
+      if (eslesen.size) {
+        const enIyi = [...eslesen.entries()].sort((a, b) => b[1] - a[1])[0][0];
+        sonuc[d.id] = { makale: eslesen.size, ornek: d.basliklar[enIyi] };
+      }
+    });
+    return sonuc;
   }
 
   /*
@@ -424,6 +502,10 @@
     konuEslesme,
     makaleyeGoreOner,
     sansTahmini,
+    ANLAM_ESIK,
+    anlamPaketi,
+    anlamselOner,
+    anlamKonuEslesmeleri,
     trDizinListele,
     esciDergileri,
     yurtdisiSec,

@@ -135,3 +135,24 @@ test("konu araması: 'cell migration' göç sayılmaz; öneri aynı başlıkta b
   const o = M.makaleyeGoreOner([daginik, tamUyum], "Avrupa'da aşırı sağ ve göç");
   assert.equal(o[0].dergi.ad, "A");
 });
+
+test("anlam araması: int8 başlık vektörleriyle en yakın dergi ve konu eşleşmesi", () => {
+  // 3 boyutlu oyuncak vektörler: [göç, sağlık, ekonomi]
+  const v = (a) => a.map((x) => Math.round(x * 127));
+  const ham = { boyut: 3, guncelleme: "x", dergiler: [["g", 2], ["s", 1]],
+    vektor: Buffer.from(Int8Array.from([...v([1, 0, 0]), ...v([0.6, 0, 0.8]), ...v([0, 1, 0])]).buffer).toString("base64") };
+  const g = d({ id: "g", ad: "Göç", basliklar: ["Suriyelilerin uyumu", "Göç ekonomisi"] });
+  const s = d({ id: "s", ad: "Sağlık", basliklar: ["Astım"] });
+  const p = M.anlamPaketi(ham, [g, s]);
+  const o = M.anlamselOner([s, g], p, Float32Array.from([1, 0, 0]));
+  assert.equal(o[0].dergi.ad, "Göç");
+  assert.equal(o[0].seviye, "Çok yüksek");
+  assert.equal(o[0].benzerBasliklar[0], "Suriyelilerin uyumu");
+  const k = M.anlamKonuEslesmeleri([g, s], p, [Float32Array.from([1, 0, 0])]);
+  assert.deepEqual(Object.keys(k), ["g"]);
+  assert.equal(k.g.makale, 2);
+  // Kelime eşleşmesi olmayan dergi anlam eşleşmesiyle konu filtresinden geçer
+  const deg = M.uygunlukDegerlendir(g, { konu: ["mülteci"], konuAnlam: k }, bugun);
+  assert.ok(!deg.engeller.includes("Konu eşleşmesi yok"));
+  assert.equal(deg.konu.anlam, 1); // "Göç ekonomisi" kelimeyle de eşleşir; anlamca ek 1 başlık
+});
