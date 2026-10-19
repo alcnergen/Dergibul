@@ -135,3 +135,33 @@ test("konu araması: 'cell migration' göç sayılmaz; öneri aynı başlıkta b
   const o = M.makaleyeGoreOner([daginik, tamUyum], "Avrupa'da aşırı sağ ve göç");
   assert.equal(o[0].dergi.ad, "A");
 });
+
+test("anlam araması: int8 başlık vektörleriyle en yakın dergi ve konu eşleşmesi", () => {
+  // 3 boyutlu oyuncak vektörler: [göç, sağlık, ekonomi]
+  const v = (a) => a.map((x) => Math.round(x * 127));
+  const ham = { boyut: 3, guncelleme: "x", dergiler: [["g", 2], ["s", 1]],
+    vektor: Buffer.from(Int8Array.from([...v([1, 0, 0]), ...v([0.6, 0, 0.8]), ...v([0, 1, 0])]).buffer).toString("base64") };
+  const g = d({ id: "g", ad: "Göç", basliklar: ["Suriyelilerin uyumu", "Göç ekonomisi"] });
+  const s = d({ id: "s", ad: "Sağlık", basliklar: ["Astım"] });
+  const p = M.anlamPaketi(ham, [g, s]);
+  const o = M.anlamselOner([s, g], p, Float32Array.from([1, 0, 0]));
+  assert.equal(o[0].dergi.ad, "Göç");
+  assert.equal(o[0].seviye, "Çok yüksek");
+  assert.equal(o[0].benzerBasliklar[0], "Suriyelilerin uyumu");
+  const k = M.anlamKonuEslesmeleri([g, s], p, [Float32Array.from([1, 0, 0])]);
+  assert.deepEqual(Object.keys(k), ["g"]);
+  assert.equal(k.g.makale, 2);
+  // Kelime eşleşmesi olmayan dergi anlam eşleşmesiyle konu filtresinden geçer
+  const deg = M.uygunlukDegerlendir(g, { konu: ["mülteci"], konuAnlam: k }, bugun);
+  assert.ok(!deg.engeller.includes("Konu eşleşmesi yok"));
+  assert.equal(deg.konu.anlam, 1); // "Göç ekonomisi" kelimeyle de eşleşir; anlamca ek 1 başlık
+});
+
+test("birleşik öneri: anlam puanı esas, kelime eşleşmesi öne çıkarır", () => {
+  const a = d({ id: "a", ad: "A" }), b = d({ id: "b", ad: "B" }), c = d({ id: "c", ad: "C" });
+  const anlam = [{ dergi: a, puan: 1.0, benzerBasliklar: [] }, { dergi: b, puan: 0.9, benzerBasliklar: ["x"] }];
+  const kelime = [{ dergi: b, benzerlik: 1, benzerBasliklar: ["y"], seviye: "Çok yüksek" }, { dergi: c, benzerlik: 0.5, benzerBasliklar: ["z"], seviye: "Orta" }];
+  const o = M.birlesikOner(anlam, kelime);
+  assert.deepEqual(o.map((x) => x.dergi.ad), ["B", "A", "C"]);
+  assert.deepEqual(o[1].benzerBasliklar, []);
+});

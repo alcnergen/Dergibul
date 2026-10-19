@@ -5,3 +5,4 @@ data/kaynak/scimagojr.csv
 data/trdizin.json
 data/uluslararasi.json
 data/kaynak/makale_onbellek.json
+node_modules/

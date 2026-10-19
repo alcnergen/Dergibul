@@ -64,6 +64,74 @@
   async function verileriAc(parola) {
     const [tr, ul] = await Promise.all([veriYukle("trdizin", parola), veriYukle("uluslararasi", parola)]);
     durum.tr = tr; durum.ul = ul; durum.varsayilan = { tr, ul };
+    durum.parola = parola;
+  }
+
+  /* ---------- Yapay zekâ ile anlam araması (tarayıcıda) ----------
+   * Model ilk kullanımda indirilir (~120 MB) ve tarayıcı önbelleğinde kalır. Başlık vektörleri yayın sırasında
+   * üretilir (data/vektorler.enc.json). Arama metni bu cihazdan çıkmaz.
+   */
+  const ANLAM_MODELI = "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
+  const TRANSFORMERS_URL = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+  const anlam = { paket: null, cikar: null, yukleniyor: null, hata: null };
+
+  function anlamDurumu(metin, tur) {
+    document.querySelectorAll(".anlam-durum").forEach((p) => {
+      p.textContent = metin || "";
+      p.className = "anlam-durum ozet" + (tur ? " " + tur : "");
+    });
+  }
+
+  function anlamHazirla() {
+    if (anlam.paket && anlam.cikar) return Promise.resolve(true);
+    if (anlam.yukleniyor) return anlam.yukleniyor;
+    anlam.yukleniyor = (async () => {
+      try {
+        anlamDurumu("Yapay zekâ verisi açılıyor…");
+        const ham = await veriYukle("vektorler", durum.parola);
+        if (durum.tr.meta.guncelleme && ham.guncelleme !== durum.tr.meta.guncelleme) {
+          throw new Error("başlık vektörleri sitedeki veriyle aynı güne ait değil; bir sonraki yayından sonra kullanılabilecek");
+        }
+        anlam.paket = Motor.anlamPaketi(ham, durum.tr.dergiler);
+        anlamDurumu("Yapay zekâ modeli yükleniyor (ilk kullanımda ~120 MB, sonra önbellekten)…");
+        const { pipeline } = await import(TRANSFORMERS_URL);
+        const yuzde = {};
+        anlam.cikar = await pipeline("feature-extraction", ANLAM_MODELI, {
+          dtype: "q8",
+          progress_callback: (p) => {
+            if (p.status === "progress" && p.total) {
+              yuzde[p.file] = p.loaded / p.total;
+              const ort = Object.values(yuzde).reduce((a, b) => a + b, 0) / Object.keys(yuzde).length;
+              anlamDurumu("Yapay zekâ modeli yükleniyor: %" + Math.round(ort * 100));
+            }
+          },
+        });
+        anlamDurumu("Yapay zekâ hazır.", "basarili");
+        return true;
+      } catch (e) {
+        anlam.hata = e;
+        anlamDurumu("Yapay zekâ kullanılamadı (" + e.message + "); kelime araması kullanılıyor.", "hata");
+        return false;
+      } finally {
+        anlam.yukleniyor = null;
+      }
+    })();
+    return anlam.yukleniyor;
+  }
+
+  async function vektorle(metinler) {
+    const t = await anlam.cikar(metinler, { pooling: "mean", normalize: true });
+    const d = t.dims[t.dims.length - 1];
+    return metinler.map((_, i) => t.data.slice(i * d, (i + 1) * d));
+  }
+
+  // "Ara"dan önce: konu kutusu için anlamca yakın başlıkları hesaplar (seçiliyse)
+  async function anlamKonuHazirla() {
+    durum.konuAnlam = null;
+    const terimler = Motor.konuTerimleri(al("konu"));
+    if (!al("konuAnlam") || !terimler.length) return;
+    if (!(await anlamHazirla())) return;
+    durum.konuAnlam = Motor.anlamKonuEslesmeleri(durum.tr.dergiler, anlam.paket, await vektorle(terimler));
   }
 
   // Giriş ekranı: doğru parola girilene kadar bekler
@@ -167,6 +235,7 @@
       etikKurul: f.etikKurul.checked,
       hedefTarih: hedef,
       konu: Motor.konuTerimleri(al("konu")),
+      konuAnlam: al("konuAnlam") ? durum.konuAnlam : null,
     };
   }
 
@@ -197,7 +266,8 @@
     if (d.alanNotu) sol.append(el("p", "alan-notu", d.alanNotu));
     const konu = deg.konu;
     if (konu && (konu.makale || konu.anahtar.length)) {
-      const terimler = Object.entries(konu.terimler).filter(([, n]) => n).map(([t, n]) => t + " " + n).join(", ");
+      const terimler = Object.entries(konu.terimler).filter(([, n]) => n).map(([t, n]) => t + " " + n)
+        .concat(konu.anlam ? ["anlamca yakın " + konu.anlam] : []).join(", ");
       const p = el("p", "konu-notu");
       p.append(el("b", null, "Konu: "));
       p.append((konu.makale ? "son " + konu.toplam + " makaleden " + konu.makale + " tanesi eşleşti" + (terimler ? " (" + terimler + ")" : "") : "") +
@@ -313,9 +383,14 @@
     const [min, maks] = al("tr-frekans").split("-").map(Number);
     const uygun = Motor.trDizinListele(durum.tr.dergiler, { minSayi: min, maksSayi: maks, doluGizle: al("tr-dolu"),
       calisma: Object.assign({}, calisma, { konu: null }) }, bugun).filter((d) => d.degerlendirme.uygun);
-    const oneriler = Motor.makaleyeGoreOner(uygun, metin, { enFazla: 20 });
+    const anlamli = durum.oneriVektor && anlam.paket;
+    const kelime = Motor.makaleyeGoreOner(uygun, metin, { enFazla: uygun.length });
+    const oneriler = anlamli
+      ? Motor.birlesikOner(Motor.anlamselOner(uygun, anlam.paket, durum.oneriVektor, { enFazla: uygun.length }), kelime, 20)
+      : kelime.slice(0, 20);
     $("#oneri-ozet").textContent = oneriler.length
-      ? "Kriterlerinize uyan " + uygun.length + " dergi arasından konusu en yakın " + oneriler.length + " dergi. " +
+      ? "Kriterlerinize uyan " + uygun.length + " dergi arasından konusu en yakın " + oneriler.length + " dergi" +
+        (anlamli ? " (yapay zekâ ile anlamca ve kelime benzerliğiyle karşılaştırıldı). " : " (kelime benzerliğiyle karşılaştırıldı). ") +
         "Şans tahmini konu uyumu ile derginin kabul oranına dayanır; kesin bir olasılık değildir."
       : "Kriterlerinize uyan dergilerin son makalelerinde bu konuya yakın bir çalışma bulunamadı. Filtreleri gevşetmeyi deneyin.";
     oneriler.forEach((o) => {
@@ -607,13 +682,17 @@
     document.querySelectorAll(PARAMETRE_SECICI).forEach((x) => {
       x.addEventListener("input", () => bekleyenDegisiklik(true));
     });
-    $("#calisma").addEventListener("submit", (e) => { e.preventDefault(); parametreleriUygula(); ciz(); });
-    document.querySelectorAll(".panel .ara-dugme").forEach((b) => b.addEventListener("click", () => {
-      parametreleriUygula(); ciz();
-    }));
-    $("#oneri-dugme").addEventListener("click", () => {
+    const araVeCiz = async () => { parametreleriUygula(); await anlamKonuHazirla(); ciz(); };
+    $("#calisma").addEventListener("submit", (e) => { e.preventDefault(); araVeCiz(); });
+    document.querySelectorAll(".panel .ara-dugme").forEach((b) => b.addEventListener("click", araVeCiz));
+    $("#oneri-dugme").addEventListener("click", async () => {
       parametreleriUygula();
       durum.oneriMetin = $("#oneri-metin").value;
+      durum.oneriVektor = null;
+      if ($("#oneri-anlam").checked && durum.oneriMetin.trim() && (await anlamHazirla())) {
+        durum.oneriVektor = (await vektorle([durum.oneriMetin.slice(0, 2000)]))[0];
+      }
+      await anlamKonuHazirla();
       ciz();
     });
     $("#yd-sadece-ssci").addEventListener("change", (e) => {

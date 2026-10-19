@@ -57,6 +57,35 @@ jobs:
           # Tarayıcı eski JS/CSS'i önbellekten kullanmasın: her yayında sürüm eki
           sed -i "s#assets/\(app\|motor\|sozler\|docentlik\)\.js#&?v=${GITHUB_SHA::8}#g; s#assets/style\.css#&?v=${GITHUB_SHA::8}#g" _site/index.html
           grep -o 'assets/[a-z]*\.[a-z]*?v=[0-9a-f]*' _site/index.html
+      # Yapay zekâ ile anlam araması: dergilerin son başlıkları çok dilli modelle vektöre çevrilir.
+      # Başarısız olursa site yine yayınlanır; tarayıcı kelime aramasına döner.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/model
+          key: anlam-modeli-minilm-l12-q8-v1
+      - name: Yapay zekâ başlık vektörleri
+        continue-on-error: true
+        env:
+          DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
+          MODEL_CACHE: ${{ runner.temp }}/model
+        run: |
+          pip install -q cryptography
+          npm install --no-save --no-audit --no-fund @huggingface/transformers@3.8.1
+          V="$RUNNER_TEMP/v"; mkdir -p "$V"
+          if [ -f data/trdizin.enc.json ]; then
+            cp data/trdizin.enc.json "$V/" && python3 scripts/sifrele.py coz "$V/trdizin.enc.json"
+          elif [ -f data/trdizin.json ]; then cp data/trdizin.json "$V/"; else echo "Veri yok, atlandı."; exit 0; fi
+          node scripts/vektor.mjs "$V/trdizin.json" "$V/vektorler.json"
+          if [ -f data/trdizin.enc.json ]; then
+            python3 scripts/sifrele.py sifrele "$V/vektorler.json" && cp "$V/vektorler.enc.json" _site/data/
+          else cp "$V/vektorler.json" _site/data/; fi
+          ls -la _site/data
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
