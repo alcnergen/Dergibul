@@ -18,6 +18,8 @@ ezer (yalnızca otomatik bulunamayan ya da yanlış çıkan değerler için).
 import argparse
 import re
 import statistics
+from collections import Counter
+from html import unescape
 import sys
 import zlib
 from datetime import date
@@ -100,6 +102,31 @@ def makale_tur(metin):
     return None
 
 
+def _meta(html, ad):
+    """<meta name="ad" content="..."> değerleri (öznitelik sırası fark etmez)."""
+    desenler = (rf'<meta[^>]+name=["\']{ad}["\'][^>]*content=["\']([^"\']*)',
+                rf'<meta[^>]+content=["\']([^"\']*)["\'][^>]*name=["\']{ad}["\']')
+    return [unescape(v).strip() for d in desenler for v in re.findall(d, html, re.IGNORECASE) if v.strip()]
+
+
+ANAHTAR_SON = r"(?:Keywords|Anahtar Kelimeler|Kaynakça|References|Destekleyen|Etik Beyan|Teşekkür|Öz\b|Abstract|Bölüm)"
+
+
+def makale_konu(html, metin):
+    """Makalenin başlığı (Türkçe/İngilizce) ve anahtar kelimeleri: konuya göre dergi aramada kullanılır."""
+    basliklar = list(dict.fromkeys(_meta(html, "citation_title") or _meta(html, "DC.Title")))
+    ham = _meta(html, "citation_keywords") or _meta(html, "keywords")
+    if not ham:
+        ham = re.findall(rf"(?:Anahtar Kelimeler|Keywords)\s*:?\s*(.{{3,300}}?)\s*{ANAHTAR_SON}", metin)
+    anahtar = []
+    for parca in ham:
+        for k in re.split(r"[;,·|]", parca):
+            k = kucuk(k).strip(" .-–")
+            if 2 <= len(k) <= 60 and k not in anahtar:
+                anahtar.append(k)
+    return {"baslik": " / ".join(basliklar)[:400] or None, "anahtar": anahtar[:15]}
+
+
 def makale_olc(html):
     metin = html_metin(html)
     return {
@@ -107,6 +134,16 @@ def makale_olc(html):
         "kabul": etiketli_tarih(metin, KABUL),
         "yayin": etiketli_tarih(metin, YAYIN),
         "tur": makale_tur(metin),
+        **makale_konu(html, metin),
+    }
+
+
+def konu_ozeti(makaleler, en_fazla=40):
+    """Derginin son makalelerinden konu sözlüğü: sık anahtar kelimeler ve son başlıklar."""
+    sayac = Counter(k for m in makaleler for k in set(m.get("anahtar") or []))
+    return {
+        "anahtarKelimeler": [k for k, _ in sayac.most_common(en_fazla)],
+        "basliklar": [m["baslik"] for m in makaleler if m.get("baslik")][:en_fazla],
     }
 
 
@@ -126,6 +163,7 @@ def sureleri_hesapla(makaleler, sayi_tarihleri):
         "ortToplamGun": ortalama(toplam),
         "olcumMakaleSayisi": len(toplam),
         "gozlenenTurler": sorted({m["tur"] for m in makaleler if m["tur"]}),
+        **konu_ozeti(makaleler),
     }
     tarihler = sorted(set(sayi_tarihleri))
     if len(tarihler) >= 2:
@@ -135,13 +173,17 @@ def sureleri_hesapla(makaleler, sayi_tarihleri):
     return sonuc
 
 
+ONBELLEK_SURUM = 2  # 2: başlık ve anahtar kelimeler de tutulur; eski kayıtlı makaleler bir kez yeniden okunur
+
+
 def _onbellekten(kayit):
     return {k: (date.fromisoformat(kayit[k]) if kayit.get(k) else None) for k in ("gonderim", "kabul", "yayin")} | {
-        "tur": kayit.get("tur")}
+        "tur": kayit.get("tur"), "baslik": kayit.get("baslik"), "anahtar": kayit.get("anahtar") or []}
 
 
 def _onbellege(olcum):
-    return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in olcum.items() if v}
+    return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in olcum.items() if v} | {
+        "v": ONBELLEK_SURUM}
 
 
 def dergi_olc(getirici, kok, sayi_adedi, makale_adedi, onbellek=None):
@@ -158,8 +200,9 @@ def dergi_olc(getirici, kok, sayi_adedi, makale_adedi, onbellek=None):
             continue
         bu_sayi = []
         for url in makale_baglantilari(sayi_html, kok)[:makale_adedi]:
-            if url in onbellek:
-                bu_sayi.append(_onbellekten(onbellek[url]))
+            eski = onbellek.get(url)
+            if eski and eski.get("v") == ONBELLEK_SURUM:
+                bu_sayi.append(_onbellekten(eski))
                 continue
             html = getirici.getir(url)
             if html:
@@ -167,6 +210,8 @@ def dergi_olc(getirici, kok, sayi_adedi, makale_adedi, onbellek=None):
                 bu_sayi.append(olcum)
                 if olcum["yayin"]:
                     onbellek[url] = _onbellege(olcum)
+            elif eski:
+                bu_sayi.append(_onbellekten(eski))  # sayfa alınamadıysa eski tarihlerle devam
         yayinlar = [m["yayin"] for m in bu_sayi if m["yayin"]]
         if yayinlar:
             sayi_tarihleri.append(statistics.median_low(yayinlar))
@@ -311,6 +356,9 @@ def olcumu_uygula(dergi, olcum):
         dergi["ilkBosSayiKaynak"] = olcum.get("ilkBosSayiKaynak")
     for k in ("kabulOrani", "kabulOraniYil", "degerlendirilenMakale", "resmiKabulGun", "veriKaynagi", "sonYayin"):
         if olcum.get(k) is not None:
+            dergi[k] = olcum[k]
+    for k in ("anahtarKelimeler", "basliklar"):  # konu sözlüğü boş geldiyse önceki korunur
+        if olcum.get(k):
             dergi[k] = olcum[k]
     if not dergi.get("ortIlkKararGun") and olcum.get("ortIlkKararGun"):
         dergi["ortIlkKararGun"] = olcum["ortIlkKararGun"]

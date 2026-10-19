@@ -50,7 +50,8 @@ class DergiPark(unittest.TestCase):
         gercek = ("Konular Çeviri ve Yorum Çalışmaları Bölüm Araştırma Makalesi Yazarlar Nahide Arslan * Türkiye "
                   "Yayımlanma Tarihi 28 Eylül 2026 Gönderilme Tarihi 27 Ocak 2026 Kabul Tarihi 29 Ağustos 2026")
         self.assertEqual(tr.makale_olc(gercek), {"gonderim": date(2026, 1, 27), "kabul": date(2026, 8, 29),
-                                                 "yayin": date(2026, 9, 28), "tur": "arastirma"})
+                                                 "yayin": date(2026, 9, 28), "tur": "arastirma",
+                                                 "baslik": None, "anahtar": []})
         html = """<table><tr><td>Bölüm</td><td>Derleme</td></tr><tr><td>Yazarlar</td></tr>
         <tr><th>Gönderilme Tarihi</th><td>1 Ocak 2024</td></tr>
         <tr><th>Kabul Tarihi</th><td>31.03.2024</td></tr>
@@ -58,6 +59,22 @@ class DergiPark(unittest.TestCase):
         m = tr.makale_olc(html)
         self.assertEqual((m["gonderim"], m["kabul"], m["yayin"], m["tur"]),
                          (date(2024, 1, 1), date(2024, 3, 31), date(2024, 6, 30), "derleme"))
+
+    def test_makale_konu(self):
+        html = """<head><meta name="citation_title" content="Avrupa&#39;da Aşırı Sağ ve Göç">
+        <meta name="citation_title" content="Far Right and Migration in Europe">
+        <meta name="citation_keywords" content="Göç; Aşırı Sağ, Popülizm">
+        <meta content="Avrupa Birliği" name="citation_keywords"></head>
+        <body>Yayımlanma Tarihi 1 Mart 2026</body>"""
+        m = tr.makale_olc(html)
+        self.assertEqual(m["baslik"], "Avrupa'da Aşırı Sağ ve Göç / Far Right and Migration in Europe")
+        self.assertEqual(m["anahtar"], ["göç", "aşırı sağ", "popülizm", "avrupa birliği"])
+        # Meta etiketi yoksa sayfa metnindeki "Anahtar Kelimeler" bloğu okunur
+        metin = "<p>Anahtar Kelimeler</p><p>Terörizm, Radikalleşme</p><p>Keywords</p><p>Terrorism</p>"
+        self.assertEqual(tr.makale_olc(metin)["anahtar"], ["terörizm", "radikalleşme"])
+        ozet = tr.konu_ozeti([m, {"anahtar": ["göç"], "baslik": "Göç ve Kent"}, {"anahtar": [], "baslik": None}])
+        self.assertEqual(ozet["anahtarKelimeler"][0], "göç")
+        self.assertEqual(len(ozet["basliklar"]), 2)
 
     def test_sureler(self):
         m = [{"gonderim": date(2024, 1, 1), "kabul": date(2024, 3, 1), "yayin": date(2024, 4, 1), "tur": "arastirma"},
@@ -278,6 +295,12 @@ class Onbellek(unittest.TestCase):
         ikinci = tr.dergi_olc(g, dp, 4, 6, onbellek)
         self.assertNotIn(mock.call(f"{dp}/article/9"), g.getir.call_args_list)
         self.assertEqual(ilk, ikinci)
+        # Başlık/anahtar kelime tutmayan eski (v1) önbellek kaydı bir kez yeniden okunur
+        onbellek[f"{dp}/article/9"].pop("v")
+        g.getir.reset_mock()
+        tr.dergi_olc(g, dp, 4, 6, onbellek)
+        self.assertIn(mock.call(f"{dp}/article/9"), g.getir.call_args_list)
+        self.assertEqual(onbellek[f"{dp}/article/9"]["v"], tr.ONBELLEK_SURUM)
 
 
 class Parcalar(unittest.TestCase):

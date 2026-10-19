@@ -93,3 +93,36 @@ test("alan seçilince yalnızca o alandaki dergiler listelenir; uygunlar önce g
   assert.ok(M.uygunlukDegerlendir(d({ alanlar: [] }), { alan: "Sosyal Bilimler" }, bugun).engeller.includes("Alanı belirlenemedi"));
   assert.ok(M.uygunlukDegerlendir(d({ alanlar: ["Mühendislik"], ikincilAlanlar: ["Sosyal Bilimler"] }), { alan: "Sosyal Bilimler" }, bugun).engeller.includes("Alan uyuşmuyor"));
 });
+
+test("konu araması: Türkçe çekimler ve Türkçe-İngilizce eş anlamlılar eşleşir", () => {
+  const dergi = d({
+    basliklar: ["Avrupa'da Göçmenlere Yönelik Tutumlar", "Radical Right Parties in Europe", "Kentsel Dönüşüm"],
+    anahtarKelimeler: ["popülizm", "dinamik sistemler"],
+  });
+  const e = M.konuEslesme(dergi, ["göç", "aşırı sağ"]);
+  assert.equal(e.makale, 2);
+  assert.equal(e.terimler["göç"], 1);
+  assert.equal(e.terimler["aşırı sağ"], 1);
+  assert.deepEqual(M.konuEslesme(dergi, ["populizm"]).anahtar, ["popülizm"]);
+  assert.equal(M.konuEslesme(dergi, ["din"]).anahtar.length, 0); // "dinamik" din değildir
+  const deg = M.uygunlukDegerlendir(dergi, { konu: ["terörizm"] }, bugun);
+  assert.ok(deg.engeller.includes("Konu eşleşmesi yok"));
+  assert.ok(M.uygunlukDegerlendir(d({}), { konu: ["göç"] }, bugun).engeller.includes("Konu verisi henüz yok"));
+  // Uluslararası listelerde konu filtresi uygulanmaz (başlık verisi yok)
+  const esci = M.esciDergileri([d({ endeksler: ["ESCI"] })], { calisma: { konu: ["göç"] } }, bugun);
+  assert.equal(esci[0].degerlendirme.uygun, true);
+});
+
+test("makaleye göre öneri: en benzer konudaki dergi önce gelir", () => {
+  const goc = d({ ad: "Göç Dergisi", basliklar: ["Suriyeli Göçmenlerin Uyumu", "Göç ve Kimlik", "Migration Policy in Turkey"],
+    anahtarKelimeler: ["göç", "mülteci"], kabulOrani: 40 });
+  const tip = d({ ad: "Tıp Dergisi", basliklar: ["Kardiyolojide Yeni Yaklaşımlar", "Pediatrik Astım"], anahtarKelimeler: ["kardiyoloji"] });
+  const bos = d({ ad: "Verisiz" });
+  const oneri = M.makaleyeGoreOner([tip, goc, bos], "Türkiye'de Suriyeli göçmenlerin toplumsal uyumu");
+  assert.equal(oneri[0].dergi.ad, "Göç Dergisi");
+  assert.equal(oneri.length, 1);
+  assert.ok(oneri[0].benzerBasliklar.includes("Suriyeli Göçmenlerin Uyumu"));
+  assert.equal(oneri[0].seviye, "Çok yüksek");
+  assert.equal(M.sansTahmini(goc, "Çok yüksek").etiket, "Yüksek");
+  assert.equal(M.sansTahmini(d({ kabulOrani: 10 }), "Düşük").etiket, "Düşük");
+});

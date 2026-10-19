@@ -49,6 +49,7 @@ def kayit_coz(kayit):
         "yayin": yayin,
         "sayi": (kayit.get("volume"), kayit.get("issue")),
         "dergipark": next((a for a in adresler if "dergipark.org.tr" in a), None),
+        "baslik": next(iter(kayit.get("title") or []), None),
     }
 
 
@@ -69,6 +70,8 @@ def ozetle(kayitlar, bugun=None):
         "ortToplamGun": ort((x["gonderim"], x["yayin"]) for x in m),
         "olcumMakaleSayisi": sum(1 for x in m if x["gonderim"] and x["yayin"]) or
         sum(1 for x in m if x["kabul"] and x["yayin"]),
+        "basliklar": [x["baslik"] for x in sorted(m, key=lambda x: x["yayin"] or date.min, reverse=True)
+                      if x["baslik"]][:40],
     }
     # Yayın sıklığı: son tam yılda kaç farklı sayı çıktı (yoksa bu yıl)
     yillik = defaultdict(set)
