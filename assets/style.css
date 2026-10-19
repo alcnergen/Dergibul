@@ -59,7 +59,7 @@ body {
 .izgara { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
 label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--soluk); }
 label.onay { flex-direction: row; align-items: center; gap: 6px; color: var(--metin); }
-select, input[type=number], input[type=month], button {
+select, input[type=number], input[type=month], input[type=text], button {
   font: inherit; padding: 7px 9px; border: 1px solid var(--cizgi); border-radius: 6px;
   background: var(--yuzey); color: var(--metin);
 }
@@ -111,3 +111,15 @@ code { background: var(--zemin); padding: 1px 4px; border-radius: 4px; }
   .dergi { grid-template-columns: 1fr; }
   .dergi .tarih { text-align: left; }
 }
+
+/* Konu araması ve makale önerisi */
+.genis { grid-column: 1 / -1; }
+.genis small { display: block; color: var(--soluk); font-size: 12px; margin-top: 4px; }
+.konu-notu { margin: 6px 0 0; font-size: 13px; }
+.konu-notu i { color: var(--soluk); }
+.oneri-kart { display: grid; gap: 10px; }
+.oneri-kart textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 8px; border: 1px solid var(--cizgi); border-radius: 6px; background: var(--yuzey); color: var(--metin); resize: vertical; }
+.oneri-kart .ipucu { margin: 0; font-size: 13px; color: var(--soluk); }
+.oneri-kart button { justify-self: start; }
+.oneri-bilgi { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding-bottom: 8px; border-bottom: 1px dashed var(--cizgi); }
+.oneri-bilgi p { flex-basis: 100%; margin: 0; }

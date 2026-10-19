@@ -166,6 +166,7 @@
       apcKabul: f.apcKabul.checked,
       etikKurul: f.etikKurul.checked,
       hedefTarih: hedef,
+      konu: Motor.konuTerimleri(al("konu")),
     };
   }
 
@@ -194,6 +195,16 @@
     sol.append(el("div", "alt-bilgi", bilgi));
     // Her dergi yalnızca ana alanının listesinde görünür; kararsız durumlarda nedeni tek cümleyle yazılır
     if (d.alanNotu) sol.append(el("p", "alan-notu", d.alanNotu));
+    const konu = deg.konu;
+    if (konu && (konu.makale || konu.anahtar.length)) {
+      const terimler = Object.entries(konu.terimler).filter(([, n]) => n).map(([t, n]) => t + " " + n).join(", ");
+      const p = el("p", "konu-notu");
+      p.append(el("b", null, "Konu: "));
+      p.append((konu.makale ? "son " + konu.toplam + " makaleden " + konu.makale + " tanesi eşleşti" + (terimler ? " (" + terimler + ")" : "") : "") +
+        (konu.anahtar.length ? (konu.makale ? "; " : "") + "anahtar kelimeler: " + konu.anahtar.slice(0, 4).join(", ") : ""));
+      if (konu.ornek) { p.append(el("br")); p.append(el("i", null, "Örnek: " + konu.ornek)); }
+      sol.append(p);
+    }
     kart.append(sol);
 
     const sag = el("div", "tarih");
@@ -279,9 +290,43 @@
         ceyrekler, ssci: al("yd-ssci"), sadeceSsci: al("yd-sadece-ssci"), calisma,
       }, bugun);
       listeCiz("#yd-liste", "#yd-ozet", liste, durum.ul.dergiler.length);
+    } else if (durum.sekme === "oneri") {
+      oneriCiz(calisma, bugun);
     } else {
       veriDurumCiz();
     }
+  }
+
+  // Makale metnine göre öneri: TR Dizin sekmesindeki filtreler ve çalışma bilgileri uygulanır, sonra konu benzerliği
+  function oneriCiz(calisma, bugun) {
+    const metin = durum.oneriMetin || "";
+    const kap = $("#oneri-liste");
+    kap.replaceChildren();
+    if (!metin.trim()) { $("#oneri-ozet").textContent = "Makalenizin başlığını ya da özetini yazıp Dergi öner'e basın."; return; }
+    const veriliDergi = durum.tr.dergiler.filter((d) => (d.basliklar || []).length).length;
+    if (!veriliDergi) {
+      $("#oneri-ozet").textContent = "Dergilerin makale başlıkları henüz toplanmadı; bir sonraki gece güncellemesinden sonra öneri yapılabilecek.";
+      return;
+    }
+    const [min, maks] = al("tr-frekans").split("-").map(Number);
+    const uygun = Motor.trDizinListele(durum.tr.dergiler, { minSayi: min, maksSayi: maks, doluGizle: al("tr-dolu"),
+      calisma: Object.assign({}, calisma, { konu: null }) }, bugun).filter((d) => d.degerlendirme.uygun);
+    const oneriler = Motor.makaleyeGoreOner(uygun, metin, { enFazla: 20 });
+    $("#oneri-ozet").textContent = oneriler.length
+      ? "Kriterlerinize uyan " + uygun.length + " dergi arasından konusu en yakın " + oneriler.length + " dergi. " +
+        "Şans tahmini konu uyumu ile derginin kabul oranına dayanır; kesin bir olasılık değildir."
+      : "Kriterlerinize uyan dergilerin son makalelerinde bu konuya yakın bir çalışma bulunamadı. Filtreleri gevşetmeyi deneyin.";
+    oneriler.forEach((o) => {
+      const kart = dergiKarti(o.dergi);
+      const sans = Motor.sansTahmini(o.dergi, o.seviye);
+      const kutu = el("div", "oneri-bilgi");
+      kutu.append(el("span", "rozet " + (o.seviye === "Çok yüksek" || o.seviye === "Yüksek" ? "iyi" : "dikkat"), "Konu uyumu: " + o.seviye));
+      kutu.append(el("span", "rozet " + (sans.etiket === "Yüksek" ? "iyi" : sans.etiket === "Orta" ? "dikkat" : "kotu"), "Tahmini şans: " + sans.etiket));
+      kutu.append(el("p", "alan-notu", sans.neden));
+      if (o.benzerBasliklar.length) kutu.append(el("p", "konu-notu", "Benzer makaleler: " + o.benzerBasliklar.join(" · ")));
+      kart.prepend(kutu);
+      kap.append(kart);
+    });
   }
 
   function veriDurumCiz() {
@@ -422,6 +467,11 @@
     document.querySelectorAll(".panel .ara-dugme").forEach((b) => b.addEventListener("click", () => {
       parametreleriUygula(); ciz();
     }));
+    $("#oneri-dugme").addEventListener("click", () => {
+      parametreleriUygula();
+      durum.oneriMetin = $("#oneri-metin").value;
+      ciz();
+    });
     $("#yd-sadece-ssci").addEventListener("change", (e) => {
       ["#yd-q1", "#yd-q2", "#yd-ssci"].forEach((s) => { $(s).disabled = e.target.checked; });
     });

@@ -59,6 +59,10 @@
         <label>En geç yayın tarihi
           <input name="hedef" type="month">
         </label>
+        <label class="genis">Konu / anahtar kelimeler
+          <input name="konu" type="text" placeholder="ör. göç, aşırı sağ, popülizm, terörizm">
+          <small>Virgülle ayırın; herhangi biri eşleşen dergiler listelenir. Dergilerin son makalelerinin başlık ve anahtar kelimelerinde aranır (yalnızca TR Dizin).</small>
+        </label>
         <label class="onay"><input name="apcKabul" type="checkbox" checked> Yayın ücreti ödeyebilirim</label>
         <label class="onay"><input name="etikKurul" type="checkbox" checked> Etik kurul iznim var</label>
         <div class="ara-satir">
@@ -72,6 +76,7 @@
       <button role="tab" data-sekme="trdizin" aria-selected="true">TR Dizin</button>
       <button role="tab" data-sekme="esci" aria-selected="false">ESCI</button>
       <button role="tab" data-sekme="yurtdisi" aria-selected="false">Yurtdışı: Q1 · Q2 · SSCI</button>
+      <button role="tab" data-sekme="oneri" aria-selected="false">Makalem için öner</button>
       <button role="tab" data-sekme="veri" aria-selected="false">Veri</button>
     </nav>
 
@@ -112,6 +117,17 @@
       </div>
       <p class="ozet" id="yd-ozet"></p>
       <div class="liste" id="yd-liste"></div>
+    </section>
+
+    <section id="oneri" class="panel" role="tabpanel" hidden>
+      <div class="kart oneri-kart">
+        <label for="oneri-metin">Makalenizin başlığı, özeti ve anahtar kelimeleri</label>
+        <textarea id="oneri-metin" rows="5" placeholder="ör. Avrupa'da aşırı sağ partilerin göç söylemi: Almanya ve Fransa karşılaştırması. Anahtar kelimeler: göç, aşırı sağ, popülizm"></textarea>
+        <p class="ipucu">Metniniz, TR Dizin dergilerinin son makalelerinin başlık ve anahtar kelimeleriyle karşılaştırılır; konusu en yakın dergiler, yukarıdaki çalışma bilgilerinize ve TR Dizin sekmesindeki filtrelere uyanlar arasından sıralanır. Metin tarayıcınızdan çıkmaz.</p>
+        <button type="button" id="oneri-dugme" class="birincil">Dergi öner</button>
+      </div>
+      <p class="ozet" id="oneri-ozet"></p>
+      <div class="liste" id="oneri-liste"></div>
     </section>
 
     <section id="veri" class="panel" role="tabpanel" hidden>

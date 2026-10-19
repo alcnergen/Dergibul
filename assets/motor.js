@@ -99,6 +99,12 @@
     if (calisma.alan && !(dergi.alanlar || []).includes(calisma.alan)) {
       engeller.push(dergi.alanlar && dergi.alanlar.length ? "Alan uyuşmuyor" : "Alanı belirlenemedi");
     }
+    let konu = null;
+    if (calisma.konu && calisma.konu.length) {
+      konu = konuEslesme(dergi, calisma.konu);
+      if (!konu.veriVar) engeller.push("Konu verisi henüz yok");
+      else if (!konu.makale && !konu.anahtar.length) engeller.push("Konu eşleşmesi yok");
+    }
     if (calisma.dil && dergi.diller && dergi.diller.length && !dergi.diller.includes(calisma.dil)) {
       engeller.push(calisma.dil.toUpperCase() + " dilinde yayın yapmıyor");
     }
@@ -150,7 +156,176 @@
       engeller: engeller,
       uyarilar: uyarilar,
       tahminiTarih: tahmini,
+      konu: konu,
     };
+  }
+
+
+  /* ---------- Konu araması ve makaleye göre dergi önerisi ----------
+   * Veri: her derginin son makalelerinin başlıkları (basliklar) ve anahtar kelimeleri (anahtarKelimeler).
+   * Metinler Türkçe harfler sadeleştirilerek (ı→i, ş→s ...) küçük harfe çevrilir; kelime başı eşleşmesi
+   * sayesinde "göç" araması "göçmen", "göçün" gibi çekimleri de bulur.
+   */
+  function sadelestir(metin) {
+    return String(metin || "").replace(/İ/g, "i").replace(/I/g, "ı").toLowerCase()
+      .replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ö/g, "o")
+      .replace(/ç/g, "c").replace(/â/g, "a").replace(/î/g, "i").replace(/û/g, "u")
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, " ").trim();
+  }
+
+  // Sık aranan konular için Türkçe-İngilizce yakın ifadeler (sadeleştirilmiş, kelime başı olarak aranır)
+  const KONU_ESANLAM = [
+    ["goc", "gocmen", "migration", "migrant", "immigra", "emigra", "multeci", "refugee", "siginmaci", "asylum", "diaspora"],
+    ["asiri sag", "radikal sag", "far right", "radical right", "extreme right", "asiri milliyetci"],
+    ["populizm", "populist", "populism"],
+    ["terorizm", "teror", "terrorism", "terrorist", "radikallesme", "radicali", "siddetli asiri", "violent extrem"],
+    ["milliyetcilik", "nationalism", "nationalist"],
+    ["demokrasi", "democracy", "democrati"],
+    ["otoriter", "authoritarian"],
+    ["secim", "election", "electoral", "voting", "secmen"],
+    ["guvenlik", "security", "guvenliklestirme", "securitization"],
+    ["dis politika", "foreign policy"],
+    ["uluslararasi iliskiler", "international relations"],
+    ["kimlik", "identity"],
+    ["irkcilik", "racism", "yabanci dusmanligi", "xenophobia", "islamofobi", "islamophobia"],
+    ["toplumsal cinsiyet", "gender", "kadin", "women", "feminizm", "feminism"],
+    ["iklim degisikligi", "climate change", "kuresel isinma", "global warming"],
+    ["yapay zeka", "artificial intelligence", "makine ogrenmesi", "machine learning", "derin ogrenme", "deep learning"],
+    ["sosyal medya", "social media"],
+    ["dijital", "digital"],
+    ["yoksulluk", "poverty"],
+    ["issizlik", "unemployment"],
+    ["enflasyon", "inflation"],
+    ["kamu politikasi", "public policy"],
+    ["yerel yonetim", "local government", "belediye", "municipal"],
+    ["avrupa birligi", "european union"],
+    ["ortadogu", "orta dogu", "middle east"],
+    ["din", "religion", "religious"],
+    ["egitim", "education"],
+    ["saglik", "health"],
+    ["turizm", "tourism"],
+    ["surdurulebilir", "sustainab"],
+  ];
+
+  function terimleriGenislet(terim) {
+    const t = sadelestir(terim);
+    if (!t) return [];
+    const grup = KONU_ESANLAM.find((g) => g.some((x) => x === t || (t.length >= 4 && x.startsWith(t))));
+    return [...new Set([t].concat(grup || []))];
+  }
+
+  // Kelime başı eşleşmesi: "goc" -> "goc", "gocun"; "asiri sag" -> "asiri sagci".
+  // 3 harf ve altındaki ifadelere en çok 3 harflik ek izin verilir ("din" -> "dini", ama "dinamik" değil).
+  function iceriyor(sadeMetin, ifade) {
+    if (ifade.length > 3 || ifade.includes(" ")) return (" " + sadeMetin).indexOf(" " + ifade) >= 0;
+    return sadeMetin.split(" ").some((k) => k.startsWith(ifade) && k.length - ifade.length <= 3);
+  }
+
+  function konuVerisiVar(dergi) {
+    return Boolean((dergi.basliklar && dergi.basliklar.length) || (dergi.anahtarKelimeler && dergi.anahtarKelimeler.length));
+  }
+
+  /*
+   * Konu eşleşmesi. terimler: ["göç", "aşırı sağ"] (herhangi biri eşleşirse yeter).
+   * Dönüş: { veriVar, makale (eşleşen başlık sayısı), toplam, anahtar[], terimler{terim: sayı}, ornek }
+   */
+  function konuEslesme(dergi, terimler) {
+    const basliklar = (dergi.basliklar || []).map(sadelestir);
+    const anahtarlar = dergi.anahtarKelimeler || [];
+    const sonuc = { veriVar: konuVerisiVar(dergi), makale: 0, toplam: basliklar.length, anahtar: [], terimler: {}, ornek: null };
+    const eslesenBaslik = new Set();
+    terimler.forEach((terim) => {
+      const ifadeler = terimleriGenislet(terim);
+      if (!ifadeler.length) return;
+      let sayi = 0;
+      basliklar.forEach((b, i) => {
+        if (ifadeler.some((f) => iceriyor(b, f))) { sayi++; eslesenBaslik.add(i); }
+      });
+      anahtarlar.forEach((a) => {
+        if (ifadeler.some((f) => iceriyor(sadelestir(a), f)) && !sonuc.anahtar.includes(a)) sonuc.anahtar.push(a);
+      });
+      sonuc.terimler[terim] = sayi;
+    });
+    sonuc.makale = eslesenBaslik.size;
+    if (eslesenBaslik.size) sonuc.ornek = dergi.basliklar[Math.min(...eslesenBaslik)];
+    return sonuc;
+  }
+
+  function konuTerimleri(metin) {
+    return String(metin || "").split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean);
+  }
+
+  const DURAK = new Set(("ve ile bir bu da de icin olarak uzerine uzerinde hakkinda bazi gibi kadar daha en cok " +
+    "olan ile ya veya ama ancak the of and in on for to a an with from by as at its is are be this that between " +
+    "study analysis case example evidence role effect effects impact approach perspective turkey turkiye " +
+    "uzerine inceleme analiz analizi ornegi ornek degerlendirme etkisi etkileri rolu yaklasim").split(" "));
+
+  // Kaba kök: Türkçe ekleri kabaca atmak için kelimenin ilk 6 harfi
+  function kokler(metin) {
+    return sadelestir(metin).split(" ").filter((k) => k.length >= 3 && !DURAK.has(k)).map((k) => k.slice(0, 6));
+  }
+
+  /*
+   * Makale metnine (başlık, özet, anahtar kelimeler) en yakın dergiler.
+   * TF-IDF kosinüs benzerliği: derginin son makale başlıkları + anahtar kelimeleri bir belge sayılır.
+   * Dönüş: [{ dergi, benzerlik (0-1), seviye, benzerBasliklar[] }] benzerliğe göre azalan.
+   */
+  function makaleyeGoreOner(dergiler, metin, secenek) {
+    secenek = Object.assign({ enFazla: 20 }, secenek);
+    const sorguKok = kokler(metin);
+    konuTerimleri(metin).forEach((t) => terimleriGenislet(t).slice(1).forEach((e) => sorguKok.push(...kokler(e))));
+    if (!sorguKok.length) return [];
+    const adaylar = dergiler.filter(konuVerisiVar);
+    const belgeler = adaylar.map((d) => {
+      const tf = new Map();
+      const ekle = (k, w) => tf.set(k, (tf.get(k) || 0) + w);
+      (d.basliklar || []).forEach((b) => kokler(b).forEach((k) => ekle(k, 1)));
+      (d.anahtarKelimeler || []).forEach((a) => kokler(a).forEach((k) => ekle(k, 2)));
+      return tf;
+    });
+    const df = new Map();
+    belgeler.forEach((tf) => tf.forEach((_, k) => df.set(k, (df.get(k) || 0) + 1)));
+    const N = belgeler.length || 1;
+    const idf = (k) => Math.log((N + 1) / ((df.get(k) || 0) + 1)) + 1;
+    const q = new Map();
+    sorguKok.forEach((k) => q.set(k, (q.get(k) || 0) + 1));
+    let qNorm = 0;
+    q.forEach((v, k) => { qNorm += (v * idf(k)) ** 2; });
+    qNorm = Math.sqrt(qNorm) || 1;
+    const sonuc = adaylar.map((d, i) => {
+      const tf = belgeler[i];
+      let carp = 0, dNorm = 0;
+      tf.forEach((v, k) => { const w = (1 + Math.log(v)) * idf(k); dNorm += w * w; });
+      q.forEach((v, k) => { if (tf.has(k)) carp += v * idf(k) * (1 + Math.log(tf.get(k))) * idf(k); });
+      const benzerlik = carp / (qNorm * (Math.sqrt(dNorm) || 1));
+      // Hangi başlıklar benziyor: sorgu köklerinden en çok içeren 2 başlık
+      const qk = new Set(q.keys());
+      const benzerBasliklar = (d.basliklar || [])
+        .map((b) => [b, kokler(b).filter((k) => qk.has(k)).length])
+        .filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 2).map((x) => x[0]);
+      return { dergi: d, benzerlik, benzerBasliklar };
+    }).filter((x) => x.benzerlik > 0).sort((a, b) => b.benzerlik - a.benzerlik);
+    const enYuksek = sonuc.length ? sonuc[0].benzerlik : 1;
+    sonuc.forEach((x) => {
+      const oran = x.benzerlik / enYuksek;
+      x.seviye = oran >= 0.75 && x.benzerBasliklar.length ? "Çok yüksek" : oran >= 0.5 ? "Yüksek" : oran >= 0.3 ? "Orta" : "Düşük";
+    });
+    return sonuc.slice(0, secenek.enFazla);
+  }
+
+  /*
+   * Kabaca kabul şansı: derginin kabul oranı ve konu uyumu birlikte. Gerçek bir olasılık değildir;
+   * yalnızca karşılaştırma için Yüksek / Orta / Düşük döner ve nedenini tek cümleyle açıklar.
+   */
+  function sansTahmini(dergi, seviye) {
+    const uyum = { "Çok yüksek": 2, "Yüksek": 1, "Orta": 0, "Düşük": -1 }[seviye] || 0;
+    const oran = dergi.kabulOrani;
+    let puan = uyum + (oran == null ? 0 : oran >= 50 ? 2 : oran >= 30 ? 1 : oran >= 15 ? 0 : -1);
+    const etiket = puan >= 3 ? "Yüksek" : puan >= 1 ? "Orta" : "Düşük";
+    const neden = "Konu uyumu " + seviye.toLocaleLowerCase("tr") + (oran == null
+      ? "; derginin kabul oranı bilinmiyor." : ", derginin kabul oranı %" + oran + (dergi.kabulOraniYil ? " (" + dergi.kabulOraniYil + ")" : "") + ".");
+    return { etiket, neden };
   }
 
   /*
@@ -192,6 +367,11 @@
    * ESCI (Emerging Sources Citation Index) dergileri.
    * secenek: { alan, sadeceTurkiye, apcsiz, calisma }
    */
+  // Uluslararası listelerde makale başlığı verisi yok; konu filtresi yalnızca TR Dizin'de uygulanır
+  function konusuz(calisma) {
+    return Object.assign({}, calisma || {}, { konu: null });
+  }
+
   function esciDergileri(dergiler, secenek, bugun) {
     secenek = secenek || {};
     return dergiler
@@ -199,7 +379,7 @@
       .filter((d) => !secenek.sadeceTurkiye || d.ulke === "Türkiye")
       .filter((d) => !secenek.apcsiz || !d.apc)
       .filter((d) => alanUyar(d, secenek.alan || (secenek.calisma || {}).alan))
-      .map((d) => Object.assign({}, d, { degerlendirme: uygunlukDegerlendir(d, secenek.calisma || {}, bugun) }))
+      .map((d) => Object.assign({}, d, { degerlendirme: uygunlukDegerlendir(d, konusuz(secenek.calisma), bugun) }))
       .sort(tarihSirala);
   }
 
@@ -220,7 +400,7 @@
         return secenek.ceyrekler.includes(d.ceyrek) || (secenek.ssci && ssci);
       })
       .filter((d) => alanUyar(d, secenek.alan || (secenek.calisma || {}).alan))
-      .map((d) => Object.assign({}, d, { degerlendirme: uygunlukDegerlendir(d, secenek.calisma || {}, bugun) }))
+      .map((d) => Object.assign({}, d, { degerlendirme: uygunlukDegerlendir(d, konusuz(secenek.calisma), bugun) }))
       .sort((a, b) => uygunOnce(a, b) || (CEYREK_SIRA[a.ceyrek] || 9) - (CEYREK_SIRA[b.ceyrek] || 9) || tarihSirala(a, b));
   }
 
@@ -235,6 +415,11 @@
     frekansUygunMu,
     uygunlukDegerlendir,
     alanUyar,
+    sadelestir,
+    konuTerimleri,
+    konuEslesme,
+    makaleyeGoreOner,
+    sansTahmini,
     trDizinListele,
     esciDergileri,
     yurtdisiSec,
