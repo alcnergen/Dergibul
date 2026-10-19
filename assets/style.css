@@ -1,3 +1,4 @@
+[hidden] { display: none !important; }
 :root {
   --zemin: #f6f7f9;
   --yuzey: #ffffff;
@@ -123,3 +124,27 @@ code { background: var(--zemin); padding: 1px 4px; border-radius: 4px; }
 .oneri-kart button { justify-self: start; }
 .oneri-bilgi { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding-bottom: 8px; border-bottom: 1px dashed var(--cizgi); }
 .oneri-bilgi p { flex-basis: 100%; margin: 0; }
+
+/* Doçentlik hesaplayıcı */
+.doc-kart { display: grid; gap: 10px; }
+.doc-kart h2 { margin: 0; }
+.doc-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; align-items: end; }
+.doc-form button { justify-self: start; }
+.doc-izgara { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin: 16px 0; }
+.doc-izgara .kart { margin: 0; min-width: 0; }
+.doc-tablo { width: 100%; border-collapse: collapse; font-size: 13px; }
+.doc-tablo td { padding: 6px 4px; border-bottom: 1px solid var(--cizgi); vertical-align: top; }
+.doc-tablo td small { display: block; color: var(--soluk); }
+.doc-tablo .sayi { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+.doc-tablo .sil { padding: 2px 8px; font-size: 12px; }
+.doc-ozet { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 14px; margin-bottom: 8px; }
+.doc-ozet strong { font-size: 18px; font-variant-numeric: tabular-nums; text-align: right; }
+.doc-sartlar { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 6px; font-size: 13px; }
+.doc-sartlar li { display: flex; gap: 8px; }
+.doc-sartlar .isaret { font-weight: 700; }
+.doc-sartlar .tamam .isaret { color: var(--iyi); }
+.doc-sartlar .eksik .isaret { color: var(--kotu); }
+.doc-plan { padding-left: 20px; display: grid; gap: 12px; }
+.doc-dergiler { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+.doc-tahmin { font-weight: 600; }
+.alt-not { font-size: 12px; color: var(--soluk); }

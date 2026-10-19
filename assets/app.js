@@ -292,6 +292,8 @@
       listeCiz("#yd-liste", "#yd-ozet", liste, durum.ul.dergiler.length);
     } else if (durum.sekme === "oneri") {
       oneriCiz(calisma, bugun);
+    } else if (durum.sekme === "docentlik") {
+      docentlikCiz(calisma, bugun);
     } else {
       veriDurumCiz();
     }
@@ -327,6 +329,147 @@
       kart.prepend(kutu);
       kap.append(kart);
     });
+  }
+
+  /* ---------- Doçentlik hesaplayıcı ---------- */
+  const DOC_ANAHTAR = "dergibul-docentlik";
+  let docKayitlar = [];
+  try { docKayitlar = JSON.parse(localStorage.getItem(DOC_ANAHTAR) || "[]"); } catch (e) { docKayitlar = []; }
+
+  function docKaydet() {
+    try { localStorage.setItem(DOC_ANAHTAR, JSON.stringify(docKayitlar)); } catch (e) { /* depo kapalı */ }
+  }
+
+  function docFormHazirla() {
+    const sec = $("#doc-tur");
+    Docentlik.ALANLAR.sosyal.maddeler.forEach((m) => {
+      const g = document.createElement("optgroup");
+      g.label = m.no + ". " + m.ad + (m.ustSinir ? " (en fazla " + m.ustSinir + " puan)" : "");
+      m.bentler.forEach((b) => {
+        const o = el("option", null, b.ad + " — " + b.puan + " puan" + (b.adetli ? " / atıf" : ""));
+        o.value = b.kod; g.append(o);
+      });
+      sec.append(g);
+    });
+    const guncelle = () => {
+      const b = Docentlik.bentBul(Docentlik.ALANLAR.sosyal, sec.value);
+      $("#doc-adet-kutu").hidden = !b.adetli;
+      $("#doc-dergi-kutu").hidden = !b.dergili;
+      $("#doc-es-kutu").hidden = !b.esDanisman;
+      $("#doc-yazar").closest("label").hidden = !b.bolunur;
+    };
+    sec.addEventListener("change", guncelle);
+    guncelle();
+    $("#doc-ekle").addEventListener("click", () => {
+      const b = Docentlik.bentBul(Docentlik.ALANLAR.sosyal, sec.value);
+      docKayitlar.push({
+        kod: sec.value,
+        yazar: b.bolunur ? Math.max(1, Number($("#doc-yazar").value) || 1) : 1,
+        adet: b.adetli ? Math.max(1, Number($("#doc-adet").value) || 1) : undefined,
+        dergi: b.dergili ? $("#doc-dergi").value.trim() : undefined,
+        esDanisman: b.esDanisman ? $("#doc-es").checked : undefined,
+        doktoraSonrasi: $("#doc-ds").checked,
+      });
+      docKaydet();
+      $("#doc-dergi").value = "";
+      ciz();
+    });
+    $("#doc-iletisim").addEventListener("change", () => ciz());
+  }
+
+  function docentlikCiz(calisma, bugun) {
+    const alan = Docentlik.ALANLAR.sosyal;
+    const secenek = { iletisimAlani: $("#doc-iletisim").checked };
+    // Kayıt listesi
+    const liste = $("#doc-liste");
+    liste.replaceChildren();
+    if (!docKayitlar.length) liste.append(el("p", "ipucu", "Henüz kayıt yok. Yukarıdan türünü seçip ekleyin."));
+    else {
+      const tablo = el("table", "doc-tablo");
+      docKayitlar.forEach((k, i) => {
+        const b = Docentlik.bentBul(alan, k.kod);
+        const tr = el("tr");
+        const ad = el("td");
+        ad.append(el("span", null, b.ad));
+        const ek = [k.yazar > 1 ? k.yazar + " yazar" : b.bolunur ? "tek yazar" : "", k.adet ? k.adet + " atıf" : "",
+          k.dergi || "", k.esDanisman ? "eş danışman" : "", k.doktoraSonrasi === false ? "doktora öncesi" : ""].filter(Boolean).join(" · ");
+        if (ek) ad.append(el("small", null, ek));
+        tr.append(ad);
+        tr.append(el("td", "sayi", String(Math.round(Docentlik.kayitPuani(alan, k) * 100) / 100)));
+        const sil = el("button", "sil", "Sil");
+        sil.type = "button";
+        sil.addEventListener("click", () => { docKayitlar.splice(i, 1); docKaydet(); ciz(); });
+        const td = el("td"); td.append(sil); tr.append(td);
+        tablo.append(tr);
+      });
+      liste.append(tablo);
+    }
+    // Sonuç
+    const r = Docentlik.hesapla("sosyal", docKayitlar, secenek);
+    const sonuc = $("#doc-sonuc");
+    sonuc.replaceChildren();
+    const ozet = el("div", "doc-ozet");
+    ozet.append(el("div", null, "Toplam"), el("strong", null, r.toplam + " / 100"));
+    ozet.append(el("div", null, "Doktora sonrası"), el("strong", null, r.doktoraSonrasi + " / 90"));
+    sonuc.append(ozet);
+    sonuc.append(el("p", "rozet " + (r.yeterli ? "iyi" : "kotu"), r.yeterli ? "Asgari başvuru şartları sağlanıyor" : "Asgari şartlar henüz sağlanmıyor"));
+    const ul = el("ul", "doc-sartlar");
+    r.sartlar.forEach((s) => {
+      const li = el("li", s.saglandi ? "tamam" : "eksik");
+      li.append(el("span", "isaret", s.saglandi ? "✓" : "✗"), el("span", null, s.ad + " — " + s.durum));
+      ul.append(li);
+    });
+    sonuc.append(ul);
+    const mt = el("table", "doc-tablo");
+    r.maddeler.filter((m) => m.ham).forEach((m) => {
+      const tr = el("tr");
+      tr.append(el("td", null, m.no + ". " + m.ad + (m.ham > m.puan ? " (üst sınır " + m.ustSinir + ")" : "")), el("td", "sayi", String(m.puan)));
+      mt.append(tr);
+    });
+    if (mt.children.length) sonuc.append(mt);
+
+    // Plan
+    const plan = Docentlik.planla("sosyal", docKayitlar, secenek);
+    const kap = $("#doc-plan");
+    kap.replaceChildren();
+    if (!plan.adimlar.length) { kap.append(el("p", null, "Eksik görünmüyor; başvuruya hazırsınız.")); return; }
+    const [min, maks] = (al("tr-frekans") || "1-12").split("-").map(Number);
+    const calismaKonusuz = Object.assign({}, calisma, { konu: null });
+    const trUygun = Motor.trDizinListele(durum.tr.dergiler, { minSayi: min, maksSayi: maks, doluGizle: al("tr-dolu"), calisma: calismaKonusuz }, bugun)
+      .filter((d) => d.degerlendirme.uygun && d.degerlendirme.tahminiTarih);
+    const goruldu = new Set();
+    const hepsi = durum.tr.dergiler.concat(durum.ul.dergiler).filter((d) => { const k = d.issn || d.id; if (goruldu.has(k)) return false; goruldu.add(k); return true; });
+    const esciUygun = Motor.esciDergileri(hepsi, { calisma: calismaKonusuz }, bugun).filter((d) => d.degerlendirme.uygun && d.degerlendirme.tahminiTarih);
+    const kullanilan = new Set();
+    let enGec = null;
+    const ol = el("ol", "doc-plan");
+    plan.adimlar.forEach((a) => {
+      const li = el("li");
+      li.append(el("strong", null, a.adet + " × " + a.tur), el("span", "ipucu", " — " + a.neden));
+      const kaynak = a.dergiTuru === "trdizin" ? trUygun : a.dergiTuru === "esci" ? esciUygun : null;
+      if (kaynak) {
+        const secilen = kaynak.filter((d) => !kullanilan.has(d.issn || d.id)).slice(0, a.adet);
+        secilen.forEach((d) => kullanilan.add(d.issn || d.id));
+        if (secilen.length) {
+          const dl = el("ul", "doc-dergiler");
+          secilen.forEach((d) => {
+            const t = d.degerlendirme.tahminiTarih;
+            if (!enGec || t > enGec) enGec = t;
+            const x = el("li");
+            const ad = el("a", null, d.ad); ad.href = d.url || d.dergipark || "#"; ad.target = "_blank"; ad.rel = "noopener";
+            x.append(ad, el("span", "ipucu", " · tahmini yayın " + Motor.ayBicimle(t)));
+            dl.append(x);
+          });
+          li.append(dl);
+        }
+        if (secilen.length < a.adet) li.append(el("p", "ipucu", "Kriterlerinize uyan yeterli dergi bulunamadı (" + secilen.length + "/" + a.adet + "); filtreleri gevşetmeyi deneyin."));
+      }
+      ol.append(li);
+    });
+    kap.append(ol);
+    if (enGec) kap.append(el("p", "doc-tahmin", "Dergi gerektiren adımlar aynı anda yürütülürse en geç yayın tahmini: " + Motor.ayBicimle(enGec) +
+      ". Atıf, kitap bölümü ve bildiri gibi adımların süresi bu tahmine dahil değildir."));
+    kap.append(el("p", "ipucu", "Plan sonrasında tahmini toplam: " + plan.sonuc.toplam + " puan, doktora sonrası " + plan.sonuc.doktoraSonrasi + " puan."));
   }
 
   function veriDurumCiz() {
@@ -458,6 +601,7 @@
       durum[k] = v;
     });
     secenekleriDoldur();
+    docFormHazirla();
     ornekUyarisi();
     document.querySelectorAll(".sekmeler button").forEach((b) => b.addEventListener("click", () => sekmeSec(b.dataset.sekme)));
     document.querySelectorAll(PARAMETRE_SECICI).forEach((x) => {

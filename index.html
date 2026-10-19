@@ -77,6 +77,7 @@
       <button role="tab" data-sekme="esci" aria-selected="false">ESCI</button>
       <button role="tab" data-sekme="yurtdisi" aria-selected="false">Yurtdışı: Q1 · Q2 · SSCI</button>
       <button role="tab" data-sekme="oneri" aria-selected="false">Makalem için öner</button>
+      <button role="tab" data-sekme="docentlik" aria-selected="false">Doçentlik</button>
       <button role="tab" data-sekme="veri" aria-selected="false">Veri</button>
     </nav>
 
@@ -130,6 +131,41 @@
       <div class="liste" id="oneri-liste"></div>
     </section>
 
+    <section id="docentlik" class="panel" role="tabpanel" hidden>
+      <div class="kart doc-kart">
+        <h2>Doçentlik puan hesaplayıcı</h2>
+        <p class="ipucu">Sosyal, Beşeri ve İdari Bilimler Temel Alanı · ÜAK 2026 Ekim Dönemi Doçentlik Başvuru Şartları, Tablo 11. Yayınlarınızı ve faaliyetlerinizi ekleyin; toplam puanınız, zorunlu şartlar ve eksikleri en kısa sürede kapatmanın yolu hesaplanır. Bilgiler yalnızca bu tarayıcıda saklanır.</p>
+        <div class="doc-form">
+          <label class="genis">Tür
+            <select id="doc-tur"></select>
+          </label>
+          <label>Yazar sayısı <input id="doc-yazar" type="number" min="1" value="1"></label>
+          <label id="doc-adet-kutu" hidden>Atıf sayısı <input id="doc-adet" type="number" min="1" value="1"></label>
+          <label id="doc-dergi-kutu" hidden>Dergi adı <input id="doc-dergi" type="text" placeholder="farklı dergi şartı için"></label>
+          <label class="onay"><input id="doc-ds" type="checkbox" checked> Doktora unvanından sonra</label>
+          <label class="onay" id="doc-es-kutu" hidden><input id="doc-es" type="checkbox"> İkinci/eş danışman</label>
+          <button type="button" id="doc-ekle" class="birincil">Ekle</button>
+        </div>
+        <label class="onay"><input id="doc-iletisim" type="checkbox"> Bilim alanım Görsel İletişim Tasarımı, İletişim Çalışmaları, Reklamcılık, Sinema ya da Halkla İlişkiler</label>
+      </div>
+      <div class="doc-izgara">
+        <div class="kart">
+          <h3>Yayın ve faaliyetleriniz</h3>
+          <div id="doc-liste"></div>
+        </div>
+        <div class="kart">
+          <h3>Sonuç</h3>
+          <div id="doc-sonuc"></div>
+        </div>
+      </div>
+      <div class="kart">
+        <h3>Eksikleri en kısa sürede kapatma planı</h3>
+        <p class="ipucu">Yayınların farklı dergilere aynı anda gönderileceği varsayılır. Önerilen dergiler, yukarıdaki çalışma bilgilerinize ve TR Dizin sekmesindeki filtrelere uyan dergiler arasından en erken tahmini yayın tarihine göre seçilir.</p>
+        <div id="doc-plan"></div>
+      </div>
+      <p class="alt-not">Asgari başvuru şartlarını sağlamak, eser incelemesinde başarılı olunacağı anlamına gelmez (Başvuru Kılavuzu 3.3). Başvurmadan önce şartları <a href="https://www.uak.gov.tr/page/docentlik-basvuru-sartlari-kLPHX" target="_blank" rel="noopener">ÜAK'ın sayfasından</a> doğrulayın.</p>
+    </section>
+
     <section id="veri" class="panel" role="tabpanel" hidden>
       <div class="kart">
         <h2>Veri durumu</h2>
@@ -161,6 +197,7 @@
 
   <script src="assets/sozler.js"></script>
   <script src="assets/motor.js"></script>
+  <script src="assets/docentlik.js"></script>
   <script src="assets/app.js"></script>
 </body>
 </html>
