@@ -126,3 +126,12 @@ test("makaleye göre öneri: en benzer konudaki dergi önce gelir", () => {
   assert.equal(M.sansTahmini(goc, "Çok yüksek").etiket, "Yüksek");
   assert.equal(M.sansTahmini(d({ kabulOrani: 10 }), "Düşük").etiket, "Düşük");
 });
+
+test("konu araması: 'cell migration' göç sayılmaz; öneri aynı başlıkta birlikte geçen terimleri öne alır", () => {
+  const tip = d({ basliklar: ["Effects of Drug X on Cell Migration in Breast Cancer"] });
+  assert.equal(M.konuEslesme(tip, ["göç"]).makale, 0);
+  const tamUyum = d({ ad: "A", basliklar: ["Avrupa'da Aşırı Sağ ve Göç Karşıtlığı"] });
+  const daginik = d({ ad: "B", basliklar: ["Avrupa Ekonomisi", "Sağ Kolda Kırık", "Göç Yolları"] });
+  const o = M.makaleyeGoreOner([daginik, tamUyum], "Avrupa'da aşırı sağ ve göç");
+  assert.equal(o[0].dergi.ad, "A");
+});
