@@ -330,7 +330,10 @@
    * çevrilir (int8). Tarayıcı aynı modelle aramayı vektöre çevirir; kosinüs benzerliği başlık başına hesaplanır.
    * Böylece "mülteci entegrasyonu" araması "Suriyeli göçmenlerin toplumsal uyumu" başlığını da bulur.
    */
-  const ANLAM_ESIK = { cokYuksek: 0.6, yuksek: 0.5, orta: 0.4, konu: 0.5 };
+  // Eşikler canlı denemeyle ayarlandı (paraphrase-multilingual-MiniLM-L12-v2): cümle sorgularında ilgili
+  // başlıklar 0,6-0,85, ilgisizler 0,35'in altında; tek kelimelik terimlerde ilgisiz başlıklar 0,48'e çıkabildiği
+  // için konu kutusu eşiği daha yüksek tutulur.
+  const ANLAM_ESIK = { cokYuksek: 0.65, yuksek: 0.55, orta: 0.45, konu: 0.55 };
 
   function anlamPaketi(ham, dergiler) {
     const ikili = typeof atob === "function" ? atob(ham.vektor) : Buffer.from(ham.vektor, "base64").toString("binary");
@@ -374,6 +377,23 @@
       return { dergi: d, benzerlik: b[0][1], puan, seviye: anlamSeviyesi(b[0][1]),
         benzerBasliklar: b.slice(0, 2).filter((x) => x[1] >= ANLAM_ESIK.orta).map((x) => d.basliklar[x[0]]) };
     }).filter(Boolean).sort((a, b) => b.puan - a.puan).slice(0, secenek.enFazla);
+  }
+
+  /*
+   * Yapay zekâ ve kelime benzerliğini birleştirir: anlam puanı esastır, aynı kelimeleri paylaşan başlıkları olan
+   * dergiler bir miktar öne çıkar. İki listeden birinde olmayan dergi de sonuca girebilir.
+   */
+  function birlesikOner(anlamListesi, kelimeListesi, enFazla) {
+    const birlesik = new Map();
+    anlamListesi.forEach((x) => birlesik.set(x.dergi.id, Object.assign({}, x, { toplam: x.puan })));
+    kelimeListesi.forEach((x) => {
+      const var_ = birlesik.get(x.dergi.id);
+      if (var_) {
+        var_.toplam += 0.4 * x.benzerlik;
+        if (!var_.benzerBasliklar.length) var_.benzerBasliklar = x.benzerBasliklar;
+      } else birlesik.set(x.dergi.id, Object.assign({}, x, { toplam: 0.4 * x.benzerlik, seviye: x.seviye }));
+    });
+    return [...birlesik.values()].sort((a, b) => b.toplam - a.toplam).slice(0, enFazla || 20);
   }
 
   /*
@@ -505,6 +525,7 @@
     ANLAM_ESIK,
     anlamPaketi,
     anlamselOner,
+    birlesikOner,
     anlamKonuEslesmeleri,
     trDizinListele,
     esciDergileri,

@@ -384,11 +384,13 @@
     const uygun = Motor.trDizinListele(durum.tr.dergiler, { minSayi: min, maksSayi: maks, doluGizle: al("tr-dolu"),
       calisma: Object.assign({}, calisma, { konu: null }) }, bugun).filter((d) => d.degerlendirme.uygun);
     const anlamli = durum.oneriVektor && anlam.paket;
-    const oneriler = anlamli ? Motor.anlamselOner(uygun, anlam.paket, durum.oneriVektor, { enFazla: 20 })
-      : Motor.makaleyeGoreOner(uygun, metin, { enFazla: 20 });
+    const kelime = Motor.makaleyeGoreOner(uygun, metin, { enFazla: uygun.length });
+    const oneriler = anlamli
+      ? Motor.birlesikOner(Motor.anlamselOner(uygun, anlam.paket, durum.oneriVektor, { enFazla: uygun.length }), kelime, 20)
+      : kelime.slice(0, 20);
     $("#oneri-ozet").textContent = oneriler.length
       ? "Kriterlerinize uyan " + uygun.length + " dergi arasından konusu en yakın " + oneriler.length + " dergi" +
-        (anlamli ? " (yapay zekâ ile anlamca karşılaştırıldı). " : " (kelime benzerliğiyle karşılaştırıldı). ") +
+        (anlamli ? " (yapay zekâ ile anlamca ve kelime benzerliğiyle karşılaştırıldı). " : " (kelime benzerliğiyle karşılaştırıldı). ") +
         "Şans tahmini konu uyumu ile derginin kabul oranına dayanır; kesin bir olasılık değildir."
       : "Kriterlerinize uyan dergilerin son makalelerinde bu konuya yakın bir çalışma bulunamadı. Filtreleri gevşetmeyi deneyin.";
     oneriler.forEach((o) => {

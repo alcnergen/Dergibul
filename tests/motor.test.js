@@ -156,3 +156,12 @@ test("anlam araması: int8 başlık vektörleriyle en yakın dergi ve konu eşle
   assert.ok(!deg.engeller.includes("Konu eşleşmesi yok"));
   assert.equal(deg.konu.anlam, 1); // "Göç ekonomisi" kelimeyle de eşleşir; anlamca ek 1 başlık
 });
+
+test("birleşik öneri: anlam puanı esas, kelime eşleşmesi öne çıkarır", () => {
+  const a = d({ id: "a", ad: "A" }), b = d({ id: "b", ad: "B" }), c = d({ id: "c", ad: "C" });
+  const anlam = [{ dergi: a, puan: 1.0, benzerBasliklar: [] }, { dergi: b, puan: 0.9, benzerBasliklar: ["x"] }];
+  const kelime = [{ dergi: b, benzerlik: 1, benzerBasliklar: ["y"], seviye: "Çok yüksek" }, { dergi: c, benzerlik: 0.5, benzerBasliklar: ["z"], seviye: "Orta" }];
+  const o = M.birlesikOner(anlam, kelime);
+  assert.deepEqual(o.map((x) => x.dergi.ad), ["B", "A", "C"]);
+  assert.deepEqual(o[1].benzerBasliklar, []);
+});
