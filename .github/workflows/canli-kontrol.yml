@@ -19,6 +19,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: TR Dizin ilk kayıt
         run: python3 scripts/trdizin_api.py --incele
       - name: DergiPark sayfa yapısı
@@ -48,3 +51,10 @@ jobs:
           for d in olculen:
               print("OLCULEN:", json.dumps(d, ensure_ascii=False))
           PY
+
+      - name: Anlam modeli (benzerlik eşikleri ve vektör üretimi)
+        run: |
+          npm install --no-save --no-audit --no-fund @huggingface/transformers@3.8.1
+          node scripts/anlam_dene.mjs
+          node scripts/vektor.mjs /tmp/kontrol.json /tmp/vektorler.json
+          ls -la /tmp/vektorler.json
