@@ -4,7 +4,7 @@ Her dergiye tek bir ana alan (disiplin) atar; dergi yalnızca o alanın listesin
 Kanıtlar:
   1. TR Dizin konuları: her konu bir alana oy verir (birden çok alana uyan konu oyunu böler).
   2. Dergi adı: "Tıp Dergisi", "Mühendislik Fakültesi Dergisi" gibi adlar güçlü bir oydur.
-  3. TR Dizin veri tabanı (Sosyal ve Beşeri / Sağlık / Fen ve Mühendislik / Yaşam): üst sınırdır;
+  3. TR Dizin veri tabanı (SOCIAL: Sosyal ve Beşeri; SCIENCE: Fen, Mühendislik, Sağlık, Yaşam): üst sınırdır;
      dergiye yalnızca dizinlendiği veri tabanının kapsadığı alanlar verilebilir.
 
 En yüksek puanlı alan ana alandır. Karar yakınsa (ikinci alan birincinin %60'ından fazlaysa) ya da
@@ -71,14 +71,17 @@ AD_ESLEME = [
      r"mathemat|biolog", "Fen Bilimleri"),
 ]
 
-# TR Dizin veri tabanı -> (temel alan, o veri tabanındaki dergiye verilebilecek alanlar)
+# TR Dizin veri tabanı -> (temel alan, o veri tabanındaki dergiye verilebilecek alanlar).
+# TR Dizin'de iki veri tabanı var: SOCIAL (Sosyal ve Beşeri Bilimler) ve SCIENCE (Fen, Mühendislik, Sağlık,
+# Yaşam Bilimleri). Diğer desenler ileride ayrı veri tabanı kodu gelirse diye tutuluyor.
 VERITABANI_ESLEME = [
     (r"social|sosyal|human", "Sosyal Bilimler",
      {"Sosyal Bilimler", "Eğitim Bilimleri", "İlahiyat", "Hukuk", "Dil ve Edebiyat", "Psikoloji",
       "İktisadi ve İdari Bilimler", "Güzel Sanatlar", "Spor Bilimleri"}),
     (r"health|medic|sağlık|tıp", "Sağlık Bilimleri", {"Sağlık Bilimleri", "Psikoloji", "Spor Bilimleri"}),
     (r"life|yaşam", "Ziraat", {"Ziraat", "Fen Bilimleri", "Sağlık Bilimleri"}),
-    (r"science|engineer|fen|mühendis|natural", "Fen Bilimleri", {"Fen Bilimleri", "Mühendislik"}),
+    (r"science|engineer|fen|mühendis|natural", "Fen Bilimleri",
+     {"Fen Bilimleri", "Mühendislik", "Sağlık Bilimleri", "Ziraat", "Spor Bilimleri", "Psikoloji"}),
 ]
 
 YAKIN_ORAN = 0.6      # ikinci alan birincinin bu oranından fazlaysa karar "yakın" sayılır

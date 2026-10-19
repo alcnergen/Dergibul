@@ -118,7 +118,8 @@ class TrDizinApi(unittest.TestCase):
     def test_tek_ana_alan(self):
         from alan import alan_belirle
         # Bildirilen hata: tıp dergisi 'Tıbbi Etik' konusu yüzünden Sosyal Bilimler'de çıkıyordu
-        tip = alan_belirle("Bozok Tıp Dergisi", ["Kardiyoloji", "Pediatri", "Tıbbi Etik", "Tarih"], ["HEALTH"])
+        # TR Dizin tıp dergilerini SCIENCE veri tabanında tutar
+        tip = alan_belirle("Bozok Tıp Dergisi", ["Kardiyoloji", "Pediatri", "Tıbbi Etik", "Tarih"], ["SCIENCE"])
         self.assertEqual(tip["alanlar"], ["Sağlık Bilimleri"])
         # Bildirilen hata: çok konulu fen dergisi sosyal konularla Sosyal Bilimler'de çıkıyordu
         fen = alan_belirle("Sinop Üniversitesi Fen Bilimleri Dergisi",
