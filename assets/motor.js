@@ -208,6 +208,14 @@
     ["surdurulebilir", "sustainab"],
   ];
 
+  // Başka alanlarda farklı anlama gelen ifadeler: başlıkta bu bağlam varsa eşleşme sayılmaz
+  // ("cell migration" hücre göçüdür, "data migration" veri taşımadır)
+  const BAGLAM_DISI = {
+    migration: /\b(cell|cells|cellular|tumou?r|cancer|metasta|stent|implant|neutrophil|leukocyte|macrophage|data|database|cloud|server|software|larva|fish|bird|ion|electro|particle|seed|hormone)/,
+    migrant: /\b(cell|cells|larva|fish|bird)/,
+    goc: /\b(hucre|tumor|kanser|kus|balik)/,
+  };
+
   function terimleriGenislet(terim) {
     const t = sadelestir(terim);
     if (!t) return [];
@@ -218,6 +226,8 @@
   // Kelime başı eşleşmesi: "goc" -> "goc", "gocun"; "asiri sag" -> "asiri sagci".
   // 3 harf ve altındaki ifadelere en çok 3 harflik ek izin verilir ("din" -> "dini", ama "dinamik" değil).
   function iceriyor(sadeMetin, ifade) {
+    const disla = BAGLAM_DISI[ifade];
+    if (disla && disla.test(sadeMetin)) return false;
     if (ifade.length > 3 || ifade.includes(" ")) return (" " + sadeMetin).indexOf(" " + ifade) >= 0;
     return sadeMetin.split(" ").some((k) => k.startsWith(ifade) && k.length - ifade.length <= 3);
   }
@@ -268,48 +278,42 @@
 
   /*
    * Makale metnine (başlık, özet, anahtar kelimeler) en yakın dergiler.
-   * TF-IDF kosinüs benzerliği: derginin son makale başlıkları + anahtar kelimeleri bir belge sayılır.
-   * Dönüş: [{ dergi, benzerlik (0-1), seviye, benzerBasliklar[] }] benzerliğe göre azalan.
+   * Derginin son makaleleri tek tek sorguyla karşılaştırılır: bir başlıkta sorgunun ne kadar çok ve ne kadar
+   * ayırt edici (nadir) kelimesi birlikte geçiyorsa o makale o kadar benzerdir. Dergi puanı en benzer üç
+   * makalenin puanından (1 + 1/2 + 1/4 ağırlıkla) ve anahtar kelime eşleşmelerinden oluşur.
+   * Dönüş: [{ dergi, benzerlik (0-1, en iyiye göre), seviye, benzerBasliklar[] }] azalan sırada.
    */
   function makaleyeGoreOner(dergiler, metin, secenek) {
     secenek = Object.assign({ enFazla: 20 }, secenek);
-    const sorguKok = kokler(metin);
-    konuTerimleri(metin).forEach((t) => terimleriGenislet(t).slice(1).forEach((e) => sorguKok.push(...kokler(e))));
-    if (!sorguKok.length) return [];
-    const adaylar = dergiler.filter(konuVerisiVar);
-    const belgeler = adaylar.map((d) => {
-      const tf = new Map();
-      const ekle = (k, w) => tf.set(k, (tf.get(k) || 0) + w);
-      (d.basliklar || []).forEach((b) => kokler(b).forEach((k) => ekle(k, 1)));
-      (d.anahtarKelimeler || []).forEach((a) => kokler(a).forEach((k) => ekle(k, 2)));
-      return tf;
-    });
+    const sorgu = new Set(kokler(metin));
+    konuTerimleri(metin).forEach((t) => terimleriGenislet(t).slice(1).forEach((e) => kokler(e).forEach((k) => sorgu.add(k))));
+    if (!sorgu.size) return [];
+    const adaylar = dergiler.filter(konuVerisiVar).map((d) => ({
+      d,
+      basliklar: (d.basliklar || []).map((b) => [b, new Set(kokler(b))]),
+      anahtar: new Set((d.anahtarKelimeler || []).flatMap(kokler)),
+    }));
+    // Ayırt edicilik: kelime ne kadar az makale başlığında geçiyorsa o kadar değerli
     const df = new Map();
-    belgeler.forEach((tf) => tf.forEach((_, k) => df.set(k, (df.get(k) || 0) + 1)));
-    const N = belgeler.length || 1;
-    const idf = (k) => Math.log((N + 1) / ((df.get(k) || 0) + 1)) + 1;
-    const q = new Map();
-    sorguKok.forEach((k) => q.set(k, (q.get(k) || 0) + 1));
-    let qNorm = 0;
-    q.forEach((v, k) => { qNorm += (v * idf(k)) ** 2; });
-    qNorm = Math.sqrt(qNorm) || 1;
-    const sonuc = adaylar.map((d, i) => {
-      const tf = belgeler[i];
-      let carp = 0, dNorm = 0;
-      tf.forEach((v, k) => { const w = (1 + Math.log(v)) * idf(k); dNorm += w * w; });
-      q.forEach((v, k) => { if (tf.has(k)) carp += v * idf(k) * (1 + Math.log(tf.get(k))) * idf(k); });
-      const benzerlik = carp / (qNorm * (Math.sqrt(dNorm) || 1));
-      // Hangi başlıklar benziyor: sorgu köklerinden en çok içeren 2 başlık
-      const qk = new Set(q.keys());
-      const benzerBasliklar = (d.basliklar || [])
-        .map((b) => [b, kokler(b).filter((k) => qk.has(k)).length])
-        .filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 2).map((x) => x[0]);
-      return { dergi: d, benzerlik, benzerBasliklar };
-    }).filter((x) => x.benzerlik > 0).sort((a, b) => b.benzerlik - a.benzerlik);
-    const enYuksek = sonuc.length ? sonuc[0].benzerlik : 1;
+    let N = 0;
+    adaylar.forEach((a) => a.basliklar.forEach(([, k]) => { N++; k.forEach((x) => { if (sorgu.has(x)) df.set(x, (df.get(x) || 0) + 1); }); }));
+    const idf = (k) => Math.log((N + 1) / ((df.get(k) || 0) + 1));
+    const sonuc = adaylar.map((a) => {
+      const puanli = a.basliklar.map(([b, k]) => {
+        let p = 0, adet = 0;
+        sorgu.forEach((x) => { if (k.has(x)) { p += idf(x); adet++; } });
+        return [b, adet >= 2 ? p * (1 + 0.25 * (adet - 2)) : p * 0.5];  // tek kelimelik eşleşme zayıf sayılır
+      }).filter((x) => x[1] > 0).sort((x, y) => y[1] - x[1]);
+      let anahtarPuan = 0;
+      sorgu.forEach((x) => { if (a.anahtar.has(x)) anahtarPuan += idf(x) * 0.3; });
+      const puan = (puanli[0] ? puanli[0][1] : 0) + (puanli[1] ? puanli[1][1] / 2 : 0) + (puanli[2] ? puanli[2][1] / 4 : 0) + anahtarPuan;
+      return { dergi: a.d, puan, benzerBasliklar: puanli.slice(0, 2).map((x) => x[0]) };
+    }).filter((x) => x.puan > 0).sort((x, y) => y.puan - x.puan);
+    const enYuksek = sonuc.length ? sonuc[0].puan : 1;
     sonuc.forEach((x) => {
-      const oran = x.benzerlik / enYuksek;
-      x.seviye = oran >= 0.75 && x.benzerBasliklar.length ? "Çok yüksek" : oran >= 0.5 ? "Yüksek" : oran >= 0.3 ? "Orta" : "Düşük";
+      x.benzerlik = x.puan / enYuksek;
+      x.seviye = x.benzerlik >= 0.7 && x.benzerBasliklar.length ? "Çok yüksek" : x.benzerlik >= 0.45 ? "Yüksek" : x.benzerlik >= 0.25 ? "Orta" : "Düşük";
+      delete x.puan;
     });
     return sonuc.slice(0, secenek.enFazla);
   }
