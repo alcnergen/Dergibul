@@ -61,15 +61,13 @@
         </label>
         <label class="genis">Konu / anahtar kelimeler
           <input name="konu" type="text" placeholder="ör. göç, aşırı sağ, popülizm, terörizm">
-          <small>Virgülle ayırın; herhangi biri eşleşen dergiler listelenir. Dergilerin son makalelerinin başlık ve anahtar kelimelerinde aranır (yalnızca TR Dizin).</small>
+          <small>Virgülle ayırın; herhangi biri eşleşen dergiler listelenir. Dergilerin son makalelerinde aynı ya da yakın konudaki başlıklar ve anahtar kelimeler aranır (yalnızca TR Dizin).</small>
         </label>
-        <label class="onay genis"><input name="konuAnlam" type="checkbox"> Yapay zekâ ile anlamca yakın başlıkları da bul (ör. "mülteci entegrasyonu" → "Suriyeli göçmenlerin toplumsal uyumu"; iki üç kelimelik ifadelerde daha iyi çalışır; ilk kullanımda ~120 MB model indirilir)</label>
         <label class="onay"><input name="apcKabul" type="checkbox" checked> Yayın ücreti ödeyebilirim</label>
         <label class="onay"><input name="etikKurul" type="checkbox" checked> Etik kurul iznim var</label>
         <div class="ara-satir">
           <button type="submit" class="birincil ara-dugme">Ara</button>
           <span class="ara-ipucu" hidden>Değişiklikler henüz uygulanmadı.</span>
-          <span class="anlam-durum ozet" role="status"></span>
         </div>
       </form>
     </section>
@@ -127,9 +125,7 @@
         <label for="oneri-metin">Makalenizin başlığı, özeti ve anahtar kelimeleri</label>
         <textarea id="oneri-metin" rows="5" placeholder="ör. Avrupa'da aşırı sağ partilerin göç söylemi: Almanya ve Fransa karşılaştırması. Anahtar kelimeler: göç, aşırı sağ, popülizm"></textarea>
         <p class="ipucu">Metniniz, TR Dizin dergilerinin son makalelerinin başlık ve anahtar kelimeleriyle karşılaştırılır; konusu en yakın dergiler, yukarıdaki çalışma bilgilerinize ve TR Dizin sekmesindeki filtrelere uyanlar arasından sıralanır. Metin tarayıcınızdan çıkmaz.</p>
-        <label class="onay"><input id="oneri-anlam" type="checkbox" checked> Yapay zekâ ile anlamca karşılaştır (önerilir; ilk kullanımda ~120 MB model indirilir, sonra önbellekten)</label>
         <button type="button" id="oneri-dugme" class="birincil">Dergi öner</button>
-        <p class="anlam-durum ozet" role="status"></p>
       </div>
       <p class="ozet" id="oneri-ozet"></p>
       <div class="liste" id="oneri-liste"></div>
