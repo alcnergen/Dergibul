@@ -27,7 +27,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -q cryptography
-      - run: node --test tests/*.test.js
+      - run: node --test tests/*.test.js tests/*.test.mjs
       - run: python3 -m unittest discover -s tests -p 'test_*.py'
 
   yayinla:
