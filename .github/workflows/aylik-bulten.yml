@@ -1,0 +1,61 @@
+name: Aylık bülten
+
+# Her ayın 1'inde, sosyal ve beşeri bilimler alanında yayın imkânı en yakın TR Dizin dergilerini
+# e-postayla gönderir. Alıcı ve SMTP bilgileri depo sırlarındadır (depo herkese açık olduğu için
+# e-posta adresleri dosyalara yazılmaz):
+#   SMTP_SUNUCU, SMTP_PORT, SMTP_KULLANICI, SMTP_PAROLA, BULTEN_ALICI, (isteğe bağlı) BULTEN_GONDEREN
+# Elle çalıştırırken "gonder" işaretlenmezse bülten yalnızca hazırlanır ve indirilebilir dosya olarak eklenir.
+on:
+  schedule:
+    - cron: "47 5 1 * *"   # her ayın 1'i 05:47 UTC (08:47 TSİ)
+  workflow_dispatch:
+    inputs:
+      gonder:
+        description: "E-postayı gönder (işaretlenmezse yalnızca önizleme dosyası üretilir)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  bulten:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q cryptography
+      - name: Veriyi çöz
+        env:
+          DERGIBUL_PAROLA: ${{ secrets.DERGIBUL_PAROLA }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/v"
+          if [ -f data/trdizin.enc.json ]; then
+            cp data/trdizin.enc.json "$RUNNER_TEMP/v/" && python3 scripts/sifrele.py coz "$RUNNER_TEMP/v/trdizin.enc.json"
+          else
+            cp data/trdizin.json "$RUNNER_TEMP/v/"
+          fi
+      - name: Bülteni hazırla
+        run: node scripts/bulten.mjs "$RUNNER_TEMP/v/trdizin.json" "$RUNNER_TEMP/bulten"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bulten
+          path: ${{ runner.temp }}/bulten
+          retention-days: 30
+      - name: E-postayla gönder
+        if: github.event_name == 'schedule' || inputs.gonder
+        env:
+          SMTP_SUNUCU: ${{ secrets.SMTP_SUNUCU }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_KULLANICI: ${{ secrets.SMTP_KULLANICI }}
+          SMTP_PAROLA: ${{ secrets.SMTP_PAROLA }}
+          BULTEN_ALICI: ${{ secrets.BULTEN_ALICI }}
+          BULTEN_GONDEREN: ${{ secrets.BULTEN_GONDEREN }}
+        run: python3 scripts/bulten_gonder.py "$RUNNER_TEMP/bulten"
