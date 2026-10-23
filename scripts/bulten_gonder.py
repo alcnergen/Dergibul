@@ -10,6 +10,7 @@ Ortam değişkenleri (GitHub depo sırları):
 """
 
 import os
+import re
 import smtplib
 import ssl
 import sys
@@ -35,18 +36,25 @@ def main():
     eksik = [a for a in ("SMTP_SUNUCU", "SMTP_KULLANICI", "SMTP_PAROLA", "BULTEN_ALICI") if not os.environ.get(a)]
     if eksik:
         sys.exit("Eksik sır: " + ", ".join(eksik) + ". GitHub: Settings → Secrets and variables → Actions.")
+    # Sırlara yapıştırırken gelen boşluk, satır sonu ya da açıklama metni yüzünden bağlantı kurulamamasın
+    adres = os.environ["SMTP_SUNUCU"].strip()
+    if not re.fullmatch(r"[A-Za-z0-9.-]+\.[A-Za-z]{2,}", adres):
+        sys.exit("SMTP_SUNUCU yalnızca sunucu adını içermeli (ör. smtp.gmail.com); sırda başka metin, boşluk ya da "
+                 "satır var gibi görünüyor. GitHub: Settings → Secrets and variables → Actions → SMTP_SUNUCU → Update.")
+    kullanici = os.environ["SMTP_KULLANICI"].strip()
+    parola = re.sub(r"\s", "", os.environ["SMTP_PAROLA"])  # Gmail uygulama şifresi boşluklu gösterilir
     alicilar = [a.strip() for a in os.environ["BULTEN_ALICI"].split(",") if a.strip()]
-    gonderen = os.environ.get("BULTEN_GONDEREN") or os.environ["SMTP_KULLANICI"]
+    gonderen = (os.environ.get("BULTEN_GONDEREN") or kullanici).strip()
     m = mesaj_olustur(klasor, gonderen, alicilar)
-    port = int(os.environ.get("SMTP_PORT") or 587)
+    port = int((os.environ.get("SMTP_PORT") or "587").strip())
     baglam = ssl.create_default_context()
     if port == 465:
-        sunucu = smtplib.SMTP_SSL(os.environ["SMTP_SUNUCU"], port, context=baglam, timeout=60)
+        sunucu = smtplib.SMTP_SSL(adres, port, context=baglam, timeout=60)
     else:
-        sunucu = smtplib.SMTP(os.environ["SMTP_SUNUCU"], port, timeout=60)
+        sunucu = smtplib.SMTP(adres, port, timeout=60)
         sunucu.starttls(context=baglam)
     with sunucu:
-        sunucu.login(os.environ["SMTP_KULLANICI"], os.environ["SMTP_PAROLA"])
+        sunucu.login(kullanici, parola)
         sunucu.send_message(m)
     print(f"Bülten gönderildi: {len(alicilar)} alıcı")
 
