@@ -42,8 +42,12 @@ jobs:
           else
             cp data/trdizin.json "$RUNNER_TEMP/v/"
           fi
-      - name: Bülteni hazırla
-        run: node scripts/bulten.mjs "$RUNNER_TEMP/v/trdizin.json" "$RUNNER_TEMP/bulten"
+      - name: Bülteni hazırla (HTML, düz metin ve PDF)
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.56.1 @fontsource/inter@5.2.8
+          npx playwright install --with-deps chromium
+          node scripts/bulten.mjs "$RUNNER_TEMP/v/trdizin.json" "$RUNNER_TEMP/bulten"
+          node scripts/bulten_pdf.mjs "$RUNNER_TEMP/bulten"
       - uses: actions/upload-artifact@v4
         with:
           name: bulten

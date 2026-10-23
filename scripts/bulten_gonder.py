@@ -23,8 +23,10 @@ def mesaj_olustur(klasor, gonderen, alicilar):
     m["Subject"] = k.joinpath("konu.txt").read_text(encoding="utf-8").strip()
     m["From"] = gonderen
     m["To"] = ", ".join(alicilar)
-    m.set_content(k.joinpath("bulten.txt").read_text(encoding="utf-8"))
-    m.add_alternative(k.joinpath("bulten.html").read_text(encoding="utf-8"), subtype="html")
+    m.set_content(k.joinpath("bulten.txt").read_text(encoding="utf-8"), charset="utf-8")
+    m.add_alternative(k.joinpath("bulten.html").read_text(encoding="utf-8"), subtype="html", charset="utf-8")
+    for pdf in sorted(k.glob("*.pdf")):
+        m.add_attachment(pdf.read_bytes(), maintype="application", subtype="pdf", filename=pdf.name)
     return m
 
 
