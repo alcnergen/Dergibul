@@ -184,9 +184,11 @@
     ["demokrasi", "democracy", "democrati"],
     ["otoriter", "authoritarian"],
     ["secim", "election", "electoral", "voting", "secmen"],
-    ["guvenlik", "security", "guvenliklestirme", "securitization"],
+    ["guvenlik", "security"],
+    ["guvenliklestirme", "securitization", "securitisation", "securitiz"],
     ["dis politika", "foreign policy"],
     ["uluslararasi iliskiler", "international relations"],
+    ["siyaset", "siyasal", "siyaset bilimi", "politika bilimi", "political science", "politics", "political"],
     ["kimlik", "identity"],
     ["irkcilik", "racism", "yabanci dusmanligi", "xenophobia", "islamofobi", "islamophobia"],
     ["toplumsal cinsiyet", "gender", "kadin", "women", "feminizm", "feminism"],
@@ -214,6 +216,9 @@
     migration: /\b(cell|cells|cellular|tumou?r|cancer|metasta|stent|implant|neutrophil|leukocyte|macrophage|data|database|cloud|server|software|larva|fish|bird|ion|electro|particle|seed|hormone)/,
     migrant: /\b(cell|cells|larva|fish|bird)/,
     goc: /\b(hucre|tumor|kanser|kus|balik)/,
+    // "gıda güvenliği", "iş sağlığı ve güvenliği", "sosyal güvenlik", "siber/veri güvenliği" ayrı konulardır
+    guvenlik: /\b(gida|is sagligi|sosyal guvenlik|siber|veri|bilgi guvenlig|hasta guvenlig|ilac|yangin|trafik)/,
+    security: /\b(food|social security|job security|cyber|data|information security|network|patient|energy security|water security)/,
   };
 
   function terimleriGenislet(terim) {

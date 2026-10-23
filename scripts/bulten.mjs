@@ -10,6 +10,12 @@ const require = createRequire(import.meta.url);
 const Motor = require("../assets/motor.js");
 
 const SITE = "https://alcnergen.github.io/Dergibul/";
+// Ayrı başlık: siyaset bilimi, göç, terör, güvenlik/güvenlikleştirme ve uluslararası ilişkiler
+// (Türkçe çekimler ve İngilizce karşılıklar motor.js'teki eş anlamlılar sözlüğünden gelir)
+export const ODAK = { ad: "Siyaset bilimi, uluslararası ilişkiler, göç, terör ve güvenlik",
+  terimler: ["siyaset", "uluslararası ilişkiler", "göç", "terörizm", "güvenlik", "güvenlikleştirme"] };
+const ODAK_ETIKET = { "siyaset": "siyaset", "uluslararası ilişkiler": "uluslararası ilişkiler", "göç": "göç",
+  "terörizm": "terör", "güvenlik": "güvenlik", "güvenlikleştirme": "güvenlikleştirme" };
 const EN_FAZLA = 25;
 const ACILIS_UFKU_GUN = 90;
 
@@ -41,12 +47,23 @@ export function bultenHazirla(veri, bugun) {
     .filter((d) => d.degerlendirme.uygun && d.degerlendirme.tahminiTarih)
     .slice(0, EN_FAZLA);
 
-  // 3) İlk boş sayısını duyuran dergiler (bilgi amaçlı)
+  // 3) Odak konular: son makalelerinde bu konulardan en az üç başlık bulunan, gönderime açık dergiler
+  const odak = Motor.trDizinListele(sosyal, { minSayi: 1, maksSayi: 12, doluGizle: true, calisma: { konu: ODAK.terimler } }, bugun)
+    .filter((d) => d.degerlendirme.uygun && d.degerlendirme.tahminiTarih && d.degerlendirme.konu && d.degerlendirme.konu.makale >= 3)
+    .slice(0, EN_FAZLA);
+
+  // 4) İlk boş sayısını duyuran dergiler (bilgi amaçlı)
   const bosSayi = sosyal.filter((d) => d.ilkBosSayi && !Motor.doluMu(d))
     .sort((a, b) => String(a.ilkBosSayi).localeCompare(String(b.ilkBosSayi))).slice(0, EN_FAZLA);
 
   const ay = bugun.toLocaleDateString("tr-TR", { month: "long", year: "numeric" });
-  return { ay, sosyal: sosyal.length, guncelleme: veri.meta && veri.meta.guncelleme, acilacak, enErken, bosSayi };
+  return { ay, sosyal: sosyal.length, guncelleme: veri.meta && veri.meta.guncelleme, acilacak, enErken, odak, bosSayi };
+}
+
+function odakKonular(d) {
+  const k = d.degerlendirme.konu;
+  return Object.entries(k.terimler).filter(([, n]) => n).map(([t, n]) => ODAK_ETIKET[t] + " " + n).join(", ") +
+    " (son " + k.toplam + " makaleden " + k.makale + ")";
 }
 
 function bag(d) {
@@ -71,6 +88,10 @@ ${tablo(["Dergi", "Alan", "Açılış", "Yılda sayı", "Ort. toplam süre"], b.
 <h2 style="font-size:17px;margin:24px 0 8px">En erken yayın imkânı (yılda 3–4 sayı, gönderime açık)</h2>
 ${tablo(["Dergi", "Alan", "Tahmini yayın", "Gönderim → kabul", "Kabul → yayın", "Kabul oranı"], b.enErken.map((d) => [ad(d), kacis((d.alanlar || [])[0] || ""), Motor.ayBicimle(d.degerlendirme.tahminiTarih), gun(d.ortKabulGun), gun(d.ortKabulYayinGun), d.kabulOrani != null ? "%" + d.kabulOrani : "—"]))}
 
+<h2 style="font-size:17px;margin:24px 0 8px">${kacis(b.odak ? ODAK.ad : "")}</h2>
+<p style="margin:0 0 8px;color:#5a6478;font-size:13px">Son makalelerinde bu konulardan en az üç çalışma yayımlamış, gönderime açık dergiler; en erken tahmini yayına göre sıralı (yılda sayı sınırı yok).</p>
+${tablo(["Dergi", "Konu eşleşmesi", "Tahmini yayın", "Yılda sayı", "Kabul oranı"], b.odak.map((d) => [ad(d) + (d.degerlendirme.konu.ornek ? `<br><span style="color:#5a6478;font-size:12px">Örnek: ${kacis(d.degerlendirme.konu.ornek)}</span>` : ""), kacis(odakKonular(d)), Motor.ayBicimle(d.degerlendirme.tahminiTarih), d.yillikSayi || "—", d.kabulOrani != null ? "%" + d.kabulOrani : "—"]))}
+
 ${b.bosSayi.length ? `<h2 style="font-size:17px;margin:24px 0 8px">İlk boş sayısını duyuran dergiler</h2>
 ${tablo(["Dergi", "Alan", "İlk boş sayı"], b.bosSayi.map((d) => [ad(d), kacis((d.alanlar || [])[0] || ""), kacis(d.ilkBosSayi)]))}` : ""}
 
@@ -86,6 +107,9 @@ export function metinYaz(b) {
   b.acilacak.forEach((d) => satir.push(`  - ${d.ad} — açılış ${tarihTr(d.acilis)} — ${bag(d)}`));
   satir.push("", "EN ERKEN YAYIN İMKÂNI (yılda 3–4 sayı, gönderime açık)");
   b.enErken.forEach((d, i) => satir.push(`  ${i + 1}. ${d.ad} — tahmini ${Motor.ayBicimle(d.degerlendirme.tahminiTarih)} — ${bag(d)}`));
+  satir.push("", ODAK.ad.toLocaleUpperCase("tr"));
+  if (!b.odak.length) satir.push("  Bu ay yok.");
+  b.odak.forEach((d, i) => satir.push(`  ${i + 1}. ${d.ad} — tahmini ${Motor.ayBicimle(d.degerlendirme.tahminiTarih)} — ${odakKonular(d)} — ${bag(d)}`));
   if (b.bosSayi.length) satir.push("", "İLK BOŞ SAYISINI DUYURAN DERGİLER");
   b.bosSayi.forEach((d) => satir.push(`  - ${d.ad} — ${d.ilkBosSayi} — ${bag(d)}`));
   satir.push("", "Tahminler derginin son sayılarındaki ortalama sürelere dayanır; kesin tarih değildir.", `Ayrıntılı arama: ${SITE}`);
@@ -101,5 +125,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
   fs.writeFileSync(path.join(cikti, "konu.txt"), `Dergibul ${b.ay} bülteni: yayın imkânı en yakın sosyal bilimler dergileri`);
   fs.writeFileSync(path.join(cikti, "bulten.html"), htmlYaz(b));
   fs.writeFileSync(path.join(cikti, "bulten.txt"), metinYaz(b));
-  console.log(`${b.sosyal} sosyal bilimler dergisi; ${b.acilacak.length} yakında açılacak, ${b.enErken.length} en erken, ${b.bosSayi.length} boş sayı duyurusu`);
+  console.log(`${b.sosyal} sosyal bilimler dergisi; ${b.acilacak.length} yakında açılacak, ${b.enErken.length} en erken, ${b.odak.length} odak konu, ${b.bosSayi.length} boş sayı duyurusu`);
 }
