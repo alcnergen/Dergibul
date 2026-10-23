@@ -8,6 +8,7 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const Motor = require("../assets/motor.js");
+import { yaziCss } from "./bulten_pdf.mjs";
 
 const SITE = "https://alcnergen.github.io/Dergibul/";
 // Ayrı başlık: siyaset bilimi, göç, terör, güvenlik/güvenlikleştirme ve uluslararası ilişkiler
@@ -70,33 +71,85 @@ function bag(d) {
   return d.url || d.dergipark || "";
 }
 
-export function htmlYaz(b) {
-  const td = 'style="padding:6px 8px;border-bottom:1px solid #e3e7ef;vertical-align:top"';
-  const th = 'style="padding:6px 8px;text-align:left;background:#f2f5fa;border-bottom:1px solid #d9dfea"';
-  const ad = (d) => (bag(d) ? `<a href="${kacis(bag(d))}" style="color:#2c56c9">${kacis(d.ad)}</a>` : kacis(d.ad));
-  const tablo = (basliklar, satirlar) => satirlar.length
-    ? `<table style="border-collapse:collapse;width:100%;font-size:13px"><tr>${basliklar.map((h) => `<th ${th}>${h}</th>`).join("")}</tr>${satirlar.map((s) => `<tr>${s.map((h) => `<td ${td}>${h}</td>`).join("")}</tr>`).join("")}</table>`
-    : '<p style="color:#5a6478">Bu ay bu başlıkta dergi yok.</p>';
-  return `<!doctype html><html lang="tr"><body style="margin:0;background:#f4f6fa;font-family:Segoe UI,Arial,sans-serif;color:#16203a">
-<div style="max-width:760px;margin:0 auto;padding:24px 16px">
-<h1 style="font-size:22px;margin:0 0 4px">Dergibul · ${kacis(b.ay)} bülteni</h1>
-<p style="margin:0 0 20px;color:#5a6478">Sosyal ve beşeri bilimler alanındaki ${b.sosyal} TR Dizin dergisinden yayın imkânı en yakın olanlar. Veri güncelleme: ${kacis(b.guncelleme || "—")}.</p>
+// Renkler ve yazı: e-posta istemcileri harici stil dosyası okumadığı için stiller satır içinde
+const R = { lacivert: "#14213d", murekkep: "#1d2939", soluk: "#667085", cizgi: "#e4e7ec", zemin: "#f2f4f7",
+  vurgu: "#3559e0", vurguAcik: "#eef2ff", odak: "#b54708", odakAcik: "#fff6ed", iyi: "#067647", iyiAcik: "#ecfdf3" };
+const YAZI = "Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-<h2 style="font-size:17px;margin:24px 0 8px">Gönderime yakında açılacak dergiler (90 gün içinde)</h2>
-${tablo(["Dergi", "Alan", "Açılış", "Yılda sayı", "Ort. toplam süre"], b.acilacak.map((d) => [ad(d), kacis((d.alanlar || [])[0] || ""), tarihTr(d.acilis), d.yillikSayi || "—", gun(Motor.ortalamaToplamGun(d))]))}
+function kart(d, sira, sag, alt, renk) {
+  const adHtml = bag(d)
+    ? `<a href="${kacis(bag(d))}" style="color:${R.murekkep};text-decoration:none;font-weight:600">${kacis(d.ad)}</a>`
+    : `<span style="font-weight:600">${kacis(d.ad)}</span>`;
+  return `<tr class="kart"><td style="padding:12px 0;border-bottom:1px solid ${R.cizgi}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+<td width="34" valign="top" style="padding-right:10px"><div style="width:26px;height:26px;border-radius:13px;background:${renk.acik};color:${renk.koyu};font:600 12px/26px ${YAZI};text-align:center">${sira}</div></td>
+<td valign="top" style="font:14px/1.45 ${YAZI};color:${R.murekkep}">${adHtml}
+<div style="font-size:12px;color:${R.soluk};margin-top:2px">${alt}</div></td>
+<td valign="top" align="right" style="padding-left:10px;white-space:nowrap"><span style="display:inline-block;padding:4px 10px;border-radius:999px;background:${renk.acik};color:${renk.koyu};font:600 12px ${YAZI}">${sag}</span></td>
+</tr></table></td></tr>`;
+}
 
-<h2 style="font-size:17px;margin:24px 0 8px">En erken yayın imkânı (yılda 3–4 sayı, gönderime açık)</h2>
-${tablo(["Dergi", "Alan", "Tahmini yayın", "Gönderim → kabul", "Kabul → yayın", "Kabul oranı"], b.enErken.map((d) => [ad(d), kacis((d.alanlar || [])[0] || ""), Motor.ayBicimle(d.degerlendirme.tahminiTarih), gun(d.ortKabulGun), gun(d.ortKabulYayinGun), d.kabulOrani != null ? "%" + d.kabulOrani : "—"]))}
+function bolum(baslik, aciklama, satirlar, renk, bos) {
+  return `<tr><td style="padding:28px 32px 4px">
+<div style="font:700 11px ${YAZI};letter-spacing:.08em;text-transform:uppercase;color:${renk.koyu}">${kacis(baslik.etiket)}</div>
+<div style="font:700 18px/1.3 ${YAZI};color:${R.murekkep};margin-top:4px">${kacis(baslik.ad)}</div>
+${aciklama ? `<div style="font:13px/1.5 ${YAZI};color:${R.soluk};margin-top:4px">${aciklama}</div>` : ""}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px">
+${satirlar.length ? satirlar.join("") : `<tr><td style="padding:12px 0;font:13px ${YAZI};color:${R.soluk}">${bos}</td></tr>`}
+</table></td></tr>`;
+}
 
-<h2 style="font-size:17px;margin:24px 0 8px">${kacis(b.odak ? ODAK.ad : "")}</h2>
-<p style="margin:0 0 8px;color:#5a6478;font-size:13px">Son makalelerinde bu konulardan en az üç çalışma yayımlamış, gönderime açık dergiler; en erken tahmini yayına göre sıralı (yılda sayı sınırı yok).</p>
-${tablo(["Dergi", "Konu eşleşmesi", "Tahmini yayın", "Yılda sayı", "Kabul oranı"], b.odak.map((d) => [ad(d) + (d.degerlendirme.konu.ornek ? `<br><span style="color:#5a6478;font-size:12px">Örnek: ${kacis(d.degerlendirme.konu.ornek)}</span>` : ""), kacis(odakKonular(d)), Motor.ayBicimle(d.degerlendirme.tahminiTarih), d.yillikSayi || "—", d.kabulOrani != null ? "%" + d.kabulOrani : "—"]))}
+/*
+ * Bültenin HTML'i. secenek.pdf: A4 baskı için sayfa kuralları ve gömülü yazı tipi (secenek.yaziCss) eklenir.
+ */
+export function htmlYaz(b, secenek) {
+  secenek = secenek || {};
+  const mavi = { koyu: R.vurgu, acik: R.vurguAcik };
+  const turuncu = { koyu: R.odak, acik: R.odakAcik };
+  const yesil = { koyu: R.iyi, acik: R.iyiAcik };
+  const alan = (d) => kacis((d.alanlar || [])[0] || "");
+  const kabul = (d) => (d.kabulOrani != null ? " · kabul %" + d.kabulOrani : "");
+  const ilk = b.enErken[0] && b.enErken[0].degerlendirme.tahminiTarih;
+  const kutu = (deger, etiket) => `<td width="33%" valign="top" style="padding:14px 16px;background:rgba(255,255,255,.08);border-radius:10px">
+<div style="font:700 20px ${YAZI};color:#fff">${deger}</div><div style="font:12px ${YAZI};color:#c7d0e0;margin-top:2px">${etiket}</div></td>`;
 
-${b.bosSayi.length ? `<h2 style="font-size:17px;margin:24px 0 8px">İlk boş sayısını duyuran dergiler</h2>
-${tablo(["Dergi", "Alan", "İlk boş sayı"], b.bosSayi.map((d) => [ad(d), kacis((d.alanlar || [])[0] || ""), kacis(d.ilkBosSayi)]))}` : ""}
+  const acilacak = b.acilacak.map((d, i) => kart(d, i + 1, tarihTr(d.acilis), `${alan(d)} · yılda ${d.yillikSayi || "?"} sayı`, yesil));
+  const enErken = b.enErken.map((d, i) => kart(d, i + 1, Motor.ayBicimle(d.degerlendirme.tahminiTarih),
+    `${alan(d)} · gönderim→kabul ${gun(d.ortKabulGun)} · kabul→yayın ${gun(d.ortKabulYayinGun)}${kabul(d)}`, mavi));
+  const odak = b.odak.map((d, i) => kart(d, i + 1, Motor.ayBicimle(d.degerlendirme.tahminiTarih),
+    `${kacis(odakKonular(d))}${kabul(d)}` + (d.degerlendirme.konu.ornek ? `<br><i>Örnek: ${kacis(d.degerlendirme.konu.ornek)}</i>` : ""), turuncu));
+  const bosSayi = b.bosSayi.map((d, i) => kart(d, i + 1, kacis(d.ilkBosSayi), alan(d), mavi));
 
-<p style="margin:28px 0 0;font-size:12px;color:#5a6478">Tahmini yayın tarihi = bugün + derginin son sayılarındaki ortalama (gönderim → kabul) + (kabul → yayın) süresi; dergi ilk boş sayısını duyurduysa geç olanı alınır. Kesin tarih değildir; başvurmadan önce derginin güncel duyurularını kontrol edin. Ayrıntılı arama: <a href="${SITE}" style="color:#2c56c9">${SITE}</a></p>
-</div></body></html>`;
+  const sayfa = secenek.pdf ? `<style>${secenek.yaziCss || ""}
+@page { size: A4; margin: 14mm 0 16mm; }
+body { margin: 0; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.kart { break-inside: avoid; page-break-inside: avoid; }
+.dis-tablo { background: #fff !important; } .dis { padding: 0 24px !important; }
+.kap { max-width: none !important; border-radius: 12px !important; }
+</style>` : "";
+
+  return `<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dergibul ${kacis(b.ay)} bülteni</title>${sayfa}</head>
+<body style="margin:0;background:${R.zemin}">
+<table role="presentation" class="dis-tablo" width="100%" cellpadding="0" cellspacing="0" style="background:${R.zemin}"><tr><td class="dis" align="center" style="padding:24px 12px">
+<table role="presentation" class="kap" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;background:#fff;border-radius:14px;overflow:hidden">
+<tr><td style="background:${R.lacivert};padding:28px 32px 24px">
+<div style="font:700 12px ${YAZI};letter-spacing:.14em;color:#9fb0d0">DERGİBUL · AYLIK BÜLTEN</div>
+<div style="font:800 28px/1.2 ${YAZI};color:#fff;margin-top:6px">${kacis(b.ay[0].toLocaleUpperCase("tr") + b.ay.slice(1))}</div>
+<div style="font:14px/1.5 ${YAZI};color:#c7d0e0;margin-top:6px">Sosyal ve beşeri bilimlerde yayın imkânı en yakın TR Dizin dergileri</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="8" style="margin-top:14px"><tr>
+${kutu(b.sosyal, "dergi tarandı")}${kutu(ilk ? Motor.ayBicimle(ilk) : "—", "en erken tahmini yayın")}${kutu(b.odak.length, "odak konuda dergi")}
+</tr></table></td></tr>
+${bolum({ etiket: "Yakında açılıyor", ad: "Gönderime 90 gün içinde açılacak dergiler" }, "", acilacak, yesil, "Bu ay gönderime açılacağını duyuran dergi yok.")}
+${bolum({ etiket: "En erken yayın", ad: "Yılda 3–4 sayı çıkaran, gönderime açık dergiler" }, "Tahmini yayın tarihine göre sıralı; sağdaki tarih bugün gönderilen bir makalenin tahmini yayın ayıdır.", enErken, mavi, "Bu ay uygun dergi bulunamadı.")}
+${bolum({ etiket: "Odak konular", ad: ODAK.ad }, "Son makalelerinde bu konulardan en az üç çalışma yayımlamış, gönderime açık dergiler (yılda sayı sınırı yok).", odak, turuncu, "Bu ay bu konularda uygun dergi bulunamadı.")}
+${b.bosSayi.length ? bolum({ etiket: "Duyuru", ad: "İlk boş sayısını duyuran dergiler" }, "", bosSayi, mavi, "") : ""}
+<tr><td style="padding:28px 32px 32px">
+<div style="border-top:1px solid ${R.cizgi};padding-top:16px;font:12px/1.6 ${YAZI};color:${R.soluk}">
+Tahmini yayın = bugün + derginin son sayılarındaki ortalama (gönderim → kabul) ve (kabul → yayın) süreleri; dergi ilk boş sayısını duyurduysa geç olanı alınır. Kesin tarih değildir, başvurmadan önce derginin güncel duyurularını kontrol edin.<br>
+Veri güncelleme: ${kacis(b.guncelleme || "—")} · Ayrıntılı arama: <a href="${SITE}" style="color:${R.vurgu}">${SITE.replace("https://", "")}</a></div>
+</td></tr></table></td></tr></table></body></html>`;
 }
 
 export function metinYaz(b) {
@@ -124,6 +177,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
   fs.mkdirSync(cikti, { recursive: true });
   fs.writeFileSync(path.join(cikti, "konu.txt"), `Dergibul ${b.ay} bülteni: yayın imkânı en yakın sosyal bilimler dergileri`);
   fs.writeFileSync(path.join(cikti, "bulten.html"), htmlYaz(b));
+  fs.writeFileSync(path.join(cikti, "bulten-pdf.html"), htmlYaz(b, { pdf: true, yaziCss: yaziCss() }));
+  const ay = `${bugun.getFullYear()}-${String(bugun.getMonth() + 1).padStart(2, "0")}`;
+  fs.writeFileSync(path.join(cikti, "pdf-adi.txt"), `Dergibul-Bulten-${ay}.pdf`);
   fs.writeFileSync(path.join(cikti, "bulten.txt"), metinYaz(b));
   console.log(`${b.sosyal} sosyal bilimler dergisi; ${b.acilacak.length} yakında açılacak, ${b.enErken.length} en erken, ${b.odak.length} odak konu, ${b.bosSayi.length} boş sayı duyurusu`);
 }
